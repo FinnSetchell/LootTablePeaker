@@ -6,6 +6,7 @@ import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -20,8 +21,10 @@ public final class ContainerInterceptHandler {
         // UseBlockCallback fires server-side before the block's use() method runs,
         // giving us a chance to cancel the interaction entirely.
         UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
-            if (!(world instanceof net.minecraft.server.level.ServerLevel)) return InteractionResult.PASS;
-            if (!PeekConfig.isEnabled()) return InteractionResult.PASS;
+            if (!(world instanceof ServerLevel serverLevel)) return InteractionResult.PASS;
+
+            PeekMode mode = PeekConfig.getMode();
+            if (mode == PeekMode.OFF) return InteractionResult.PASS;
             if (player.isSpectator()) return InteractionResult.PASS;
 
             BlockEntity be = world.getBlockEntity(hitResult.getBlockPos());
@@ -32,8 +35,12 @@ public final class ContainerInterceptHandler {
             ResourceKey<LootTable> lootTableKey = container.getLootTable();
             if (lootTableKey == null) return InteractionResult.PASS;
 
-            String tableId = lootTableKey.location().toString();
-            sendPeekTitle((ServerPlayer) player, tableId);
+            ServerPlayer serverPlayer = (ServerPlayer) player;
+            if (mode == PeekMode.PREVIEW) {
+                LootPreviewMenu.open(serverPlayer, serverLevel, hitResult.getBlockPos(), container);
+            } else {
+                sendPeekTitle(serverPlayer, lootTableKey.location().toString());
+            }
 
             // FAIL cancels the interaction without a swing animation or screen-open packet.
             return InteractionResult.FAIL;

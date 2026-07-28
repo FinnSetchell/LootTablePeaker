@@ -13,16 +13,16 @@ public final class PeekConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path CONFIG_PATH = FabricLoader.getInstance().getConfigDir().resolve("loot_table_peeker.json");
 
-    private static boolean enabled = false;
+    private static PeekMode mode = PeekMode.OFF;
 
     private PeekConfig() {}
 
-    public static boolean isEnabled() {
-        return enabled;
+    public static PeekMode getMode() {
+        return mode;
     }
 
-    public static void setEnabled(boolean value) {
-        enabled = value;
+    public static void setMode(PeekMode value) {
+        mode = value;
         save();
     }
 
@@ -32,10 +32,23 @@ public final class PeekConfig {
             return;
         }
         try {
-            String json = Files.readString(CONFIG_PATH);
-            Data data = GSON.fromJson(json, Data.class);
-            if (data != null) {
-                enabled = data.enabled;
+            Data data = GSON.fromJson(Files.readString(CONFIG_PATH), Data.class);
+            if (data == null) return;
+
+            if (data.mode() != null) {
+                PeekMode parsed = PeekMode.byId(data.mode());
+                if (parsed == null) {
+                    LootTablePeeker.LOGGER.warn("Unknown mode '{}' in config, falling back to off", data.mode());
+                    parsed = PeekMode.OFF;
+                }
+                mode = parsed;
+                return;
+            }
+
+            // Pre-mode configs stored a plain boolean; the old "on" behaviour is now the title mode.
+            if (data.enabled() != null) {
+                mode = data.enabled() ? PeekMode.TITLE : PeekMode.OFF;
+                save();
             }
         } catch (IOException e) {
             LootTablePeeker.LOGGER.error("Failed to load config", e);
@@ -44,11 +57,12 @@ public final class PeekConfig {
 
     private static void save() {
         try {
-            Files.writeString(CONFIG_PATH, GSON.toJson(new Data(enabled)));
+            Files.writeString(CONFIG_PATH, GSON.toJson(new Data(mode.id(), null)));
         } catch (IOException e) {
             LootTablePeeker.LOGGER.error("Failed to save config", e);
         }
     }
 
-    private record Data(boolean enabled) {}
+    /** {@code enabled} is only read, never written — it exists solely to migrate old config files. */
+    private record Data(String mode, Boolean enabled) {}
 }

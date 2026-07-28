@@ -1,5 +1,6 @@
 package com.finndog.loottablepeeker;
 
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.commands.CommandSourceStack;
@@ -12,30 +13,38 @@ public final class PeekCommand {
     private PeekCommand() {}
 
     public static void register() {
-        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
-            dispatcher.register(
-                literal("lootpeek")
-                    .requires(source -> source.hasPermission(2))
-                    .executes(PeekCommand::executeStatus)
-                    .then(literal("on").executes(ctx -> executeSet(ctx, true)))
-                    .then(literal("off").executes(ctx -> executeSet(ctx, false)))
-            )
-        );
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+            LiteralArgumentBuilder<CommandSourceStack> root = literal("lootpeek")
+                .requires(source -> source.hasPermission(2))
+                .executes(PeekCommand::executeStatus);
+
+            for (PeekMode mode : PeekMode.values()) {
+                root.then(literal(mode.id()).executes(ctx -> executeSet(ctx, mode)));
+            }
+            // Kept from before modes existed; "on" used to mean the title behaviour.
+            root.then(literal("on").executes(ctx -> executeSet(ctx, PeekMode.TITLE)));
+
+            dispatcher.register(root);
+        });
     }
 
     private static int executeStatus(CommandContext<CommandSourceStack> ctx) {
-        boolean state = PeekConfig.isEnabled();
+        PeekMode mode = PeekConfig.getMode();
         ctx.getSource().sendSuccess(
-            () -> Component.literal("Loot Table Peeker is " + (state ? "§aON" : "§cOFF")),
+            () -> Component.literal("Loot Table Peeker mode: ")
+                .append(mode.displayName())
+                .append(Component.literal(" — " + mode.description())),
             false
         );
         return 1;
     }
 
-    private static int executeSet(CommandContext<CommandSourceStack> ctx, boolean enable) {
-        PeekConfig.setEnabled(enable);
+    private static int executeSet(CommandContext<CommandSourceStack> ctx, PeekMode mode) {
+        PeekConfig.setMode(mode);
         ctx.getSource().sendSuccess(
-            () -> Component.literal("Loot Table Peeker " + (enable ? "§aenabled" : "§cdisabled") + "§r (server-wide)"),
+            () -> Component.literal("Loot Table Peeker mode set to ")
+                .append(mode.displayName())
+                .append(Component.literal(" (server-wide) — " + mode.description())),
             true
         );
         return 1;
