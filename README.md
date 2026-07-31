@@ -16,6 +16,16 @@ In `preview` mode, right-clicking a loot container opens a read-only chest GUI l
 
 The first roll uses the container's own loot table seed when it has one, so it shows exactly what you would have gotten. Rerolls use fresh random seeds, each shown in the info book.
 
+An empty preview is ambiguous, so when nothing shows up the reason is spelled out with a marker in the middle of the loot area:
+
+| Marker | Meaning |
+| --- | --- |
+| Structure void — *Rolled nothing* | The table exists and ran, but produced no items. Often legitimate; try rerolling. |
+| Barrier — *Loot table not found* | No loot table is registered under that id. Usually a typo or a missing datapack. |
+| Barrier — *Roll failed* | The roll threw an exception, e.g. the table needs loot context a chest interaction can't supply. The message is in the tooltip, the stack trace in the server log. |
+
+The info book repeats the reason on its `Rolled:` line.
+
 ## Commands
 - `/lootpeek` - shows the current mode
 - `/lootpeek off` - disables peeking server-wide

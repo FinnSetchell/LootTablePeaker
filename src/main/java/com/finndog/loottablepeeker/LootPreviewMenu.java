@@ -2,7 +2,9 @@ package com.finndog.loottablepeeker;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
@@ -27,6 +29,7 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * A read-only chest GUI showing what a container's loot table <em>would</em> roll, with a reroll
@@ -58,6 +61,16 @@ public class LootPreviewMenu extends ChestMenu {
     private int rollCount;
     private int filledSlots;
     private int totalItems;
+    private Status status = Status.OK;
+    private String failure;
+
+    /** An empty loot area on its own is ambiguous, so each way of ending up with one is named. */
+    private enum Status {
+        OK,
+        EMPTY_ROLL,
+        MISSING_TABLE,
+        FAILED
+    }
 
     public static void open(ServerPlayer player, ServerLevel level, BlockPos pos, RandomizableContainerBlockEntity container) {
         ResourceKey<LootTable> tableKey = container.getLootTable();
@@ -103,24 +116,32 @@ public class LootPreviewMenu extends ChestMenu {
         this.rollCount++;
         this.filledSlots = 0;
         this.totalItems = 0;
+        this.status = Status.OK;
+        this.failure = null;
 
         SimpleContainer scratch = new SimpleContainer(this.lootSlots);
         try {
-            LootTable table = this.level.getServer().reloadableRegistries().getLootTable(this.tableKey);
-            LootParams params = new LootParams.Builder(this.level)
-                .withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(this.pos))
-                .withParameter(LootContextParams.THIS_ENTITY, this.viewer)
-                .withLuck(this.viewer.getLuck())
-                .create(LootContextParamSets.CHEST);
-            table.fill(scratch, params, this.seed);
+            if (!isTableRegistered()) {
+                // A typo'd or datapack-less table id would otherwise look exactly like a table that
+                // happens to roll nothing.
+                LootTablePeeker.LOGGER.warn("No loot table registered as {}", this.tableKey.location());
+                this.status = Status.MISSING_TABLE;
+            } else {
+                LootTable table = this.level.getServer().reloadableRegistries().getLootTable(this.tableKey);
+                LootParams params = new LootParams.Builder(this.level)
+                    .withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(this.pos))
+                    .withParameter(LootContextParams.THIS_ENTITY, this.viewer)
+                    .withLuck(this.viewer.getLuck())
+                    .create(LootContextParamSets.CHEST);
+                table.fill(scratch, params, this.seed);
+            }
         } catch (Exception e) {
             // A table wanting parameters a chest context cannot supply would otherwise take down the
             // interaction, which is a rough failure mode for a debugging tool.
             LootTablePeeker.LOGGER.error("Failed to roll loot table {}", this.tableKey.location(), e);
             scratch.clearContent();
-            scratch.setItem(0, control(Items.BARRIER,
-                Component.literal("Roll failed").withStyle(ChatFormatting.RED),
-                List.of(loreLine("", String.valueOf(e)))));
+            this.status = Status.FAILED;
+            this.failure = String.valueOf(e);
         }
 
         int lootArea = this.lootRows * COLUMNS;
@@ -137,7 +158,43 @@ public class LootPreviewMenu extends ChestMenu {
             }
             this.display.setItem(slot, stack);
         }
+
+        if (this.status == Status.OK && this.filledSlots == 0) {
+            this.status = Status.EMPTY_ROLL;
+        }
+        if (this.status != Status.OK) {
+            // Counting is already done, so the marker never inflates the item totals.
+            this.display.setItem(Math.min(lootArea / 2, this.lootSlots - 1), statusMarker());
+        }
         buildControlRow();
+    }
+
+    private boolean isTableRegistered() {
+        Optional<? extends HolderLookup.RegistryLookup<LootTable>> registry =
+            this.level.getServer().reloadableRegistries().lookup().lookup(Registries.LOOT_TABLE);
+        return registry.isPresent() && registry.get().get(this.tableKey).isPresent();
+    }
+
+    /** Placed in the middle of an otherwise empty loot area to say why it is empty. */
+    private ItemStack statusMarker() {
+        return switch (this.status) {
+            case EMPTY_ROLL -> control(Items.STRUCTURE_VOID,
+                Component.literal("Rolled nothing").withStyle(ChatFormatting.YELLOW),
+                List.of(
+                    loreLine("", "This table produced no items."),
+                    loreLine("", "That can be normal — try rerolling.")));
+            case MISSING_TABLE -> control(Items.BARRIER,
+                Component.literal("Loot table not found").withStyle(ChatFormatting.RED),
+                List.of(
+                    loreLine("", "Nothing is registered under this id."),
+                    loreLine("", "Check for a typo or a missing datapack.")));
+            case FAILED -> control(Items.BARRIER,
+                Component.literal("Roll failed").withStyle(ChatFormatting.RED),
+                List.of(
+                    loreLine("", String.valueOf(this.failure)),
+                    loreLine("", "See the server log for the stack trace.")));
+            case OK -> ItemStack.EMPTY;
+        };
     }
 
     private void buildControlRow() {
@@ -152,11 +209,28 @@ public class LootPreviewMenu extends ChestMenu {
     private ItemStack infoItem() {
         List<Component> lore = new ArrayList<>();
         lore.add(loreLine("Table: ", this.tableKey.location().toString()));
-        lore.add(loreLine("Rolled: ", this.totalItems + " item" + (this.totalItems == 1 ? "" : "s")
-            + " in " + this.filledSlots + "/" + this.lootSlots + " slots"));
+        if (this.status == Status.OK) {
+            lore.add(loreLine("Rolled: ", this.totalItems + " item" + (this.totalItems == 1 ? "" : "s")
+                + " in " + this.filledSlots + "/" + this.lootSlots + " slots"));
+        } else {
+            lore.add(loreLine("Rolled: ", statusSummary(), statusColour()));
+        }
         lore.add(loreLine("Seed: ", this.seed + (this.usingContainerSeed ? " (from container)" : " (random)")));
         lore.add(loreLine("Roll: ", "#" + this.rollCount));
         return control(Items.BOOK, Component.literal("Loot Preview").withStyle(ChatFormatting.YELLOW), lore);
+    }
+
+    private String statusSummary() {
+        return switch (this.status) {
+            case EMPTY_ROLL -> "nothing";
+            case MISSING_TABLE -> "loot table not found";
+            case FAILED -> "roll failed";
+            case OK -> "";
+        };
+    }
+
+    private ChatFormatting statusColour() {
+        return this.status == Status.EMPTY_ROLL ? ChatFormatting.YELLOW : ChatFormatting.RED;
     }
 
     private ItemStack rerollItem() {
@@ -177,8 +251,12 @@ public class LootPreviewMenu extends ChestMenu {
     }
 
     private static Component loreLine(String label, String value) {
+        return loreLine(label, value, ChatFormatting.WHITE);
+    }
+
+    private static Component loreLine(String label, String value, ChatFormatting valueColour) {
         return Component.literal(label).withStyle(ChatFormatting.GRAY)
-            .append(Component.literal(value).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal(value).withStyle(valueColour))
             .withStyle(style -> style.withItalic(false));
     }
 
