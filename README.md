@@ -76,4 +76,25 @@ Switching which version the source tree is checked out as (this rewrites the ver
 ./gradlew "Set active project to 26.2-neoforge"
 ```
 
+## Tests
+
+`src/gametest/` holds an in-world GameTest suite that builds as a second, never-shipped mod. It runs headless against a real dedicated server:
+
+```bash
+./gradlew :1.21.1-fabric:runGameTest
+```
+
+The nine tests cover the loot table accessors that differ per version, and drive the real server-side right-click path (`ServerPlayerGameMode#useItemOn`) so each loader's event wiring is exercised too — `UseBlockCallback` on Fabric, `PlayerInteractEvent.RightClickBlock` on NeoForge.
+
+Note that `GameTestHelper#useBlock` is deliberately **not** used: it calls the block state's own use method directly, skipping the game mode and therefore both of those hooks, which would make the interception tests pass without testing anything.
+
+The GameTest framework changed shape twice across the matrix, absorbed by the `gametest` swap in `stonecutter.gradle.kts` plus a small amount of conditional wiring:
+
+| Nodes | Registration |
+| --- | --- |
+| Fabric &lt; 1.21.5 | `implements FabricGameTest` + vanilla `@GameTest` |
+| NeoForge &lt; 1.21.5 | `@GameTestHolder` + `@PrefixGameTestTemplate` |
+| Fabric ≥ 1.21.5 | Fabric's own `@GameTest` |
+| NeoForge ≥ 1.21.5 | No annotation — `NeoForgeGameTests` registers the same bodies via `RegisterGameTestsEvent` |
+
 Mod metadata and per-version dependency versions live in `stonecutter.properties.toml`; the node matrix is declared in `settings.gradle.kts`.

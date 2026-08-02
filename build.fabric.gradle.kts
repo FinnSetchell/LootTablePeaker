@@ -12,6 +12,13 @@ base.archivesName = "${sc.properties.get<String>("mod.archive_name")}-fabric-${s
 // Declared per version in stonecutter.properties.toml (1.20.1 -> 17, 1.21.x -> 21, 26.x -> 25).
 val requiredJava: JavaVersion = JavaVersion.toVersion(sc.properties.get<String>("mod.java"))
 
+// The gametest sources build a second, never-shipped mod (`loot_table_peeker_gametest`) so nothing
+// test-only ends up in the released jar. It sees the mod's own classes via main's output.
+val gametest: SourceSet = sourceSets.create("gametest") {
+    compileClasspath += sourceSets.main.get().compileClasspath + sourceSets.main.get().output
+    runtimeClasspath += sourceSets.main.get().runtimeClasspath + sourceSets.main.get().output
+}
+
 dependencies {
     minecraft("com.mojang:minecraft:${sc.current.version}")
     // No-op on the un-obfuscated versions; applies Mojang mappings on the obfuscated ones.
@@ -38,11 +45,25 @@ loom {
             ideConfigGenerated(true)
             runDir("../../run/${project.name}")
         }
+        // Headless in-world tests: boots a dedicated server, runs every test in an empty structure,
+        // writes a JUnit XML report and exits non-zero on failure.
+        register("gameTest") {
+            server()
+            configName = "Fabric Game Test"
+            ideConfigGenerated(true)
+            source(gametest)
+            runDir("build/gametest")
+            vmArg("-Dfabric-api.gametest")
+            vmArg("-Dfabric-api.gametest.report-file=${layout.buildDirectory.get().asFile}/gametest/report.xml")
+        }
     }
 
     mods {
         register(sc.properties.get<String>("mod.id")) {
             sourceSet(sourceSets.main.get())
+        }
+        register("${sc.properties.get<String>("mod.id")}_gametest") {
+            sourceSet(gametest)
         }
     }
 }

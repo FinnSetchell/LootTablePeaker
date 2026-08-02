@@ -1,0 +1,19 @@
+{
+    "schemaVersion": 1,
+    "id": "loot_table_peeker_gametest",
+    "version": "1.0.0",
+    "name": "Loot Table Peeker Game Tests",
+    "description": "In-world GameTest suite for Loot Table Peeker. Never shipped; only loaded under -Dfabric-api.gametest.",
+    "environment": "*",
+    "entrypoints": {
+        "fabric-gametest": [
+            "com.finndog.loottablepeeker.fabric.gametest.PeekGameTests"
+        ]
+    },
+    "depends": {
+        "fabricloader": "*",
+        "fabric-api": "*",
+        "minecraft": "*",
+        "loot_table_peeker": "*"
+    }
+}

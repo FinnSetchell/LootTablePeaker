@@ -10,12 +10,39 @@ base.archivesName = "${sc.properties.get<String>("mod.archive_name")}-neoforge-$
 // Declared per version in stonecutter.properties.toml (1.21.x -> 21, 26.x -> 25).
 val requiredJava: JavaVersion = JavaVersion.toVersion(sc.properties.get<String>("mod.java"))
 
+// The in-world tests build as a second, never-shipped mod, mirroring the Fabric side. The `jar`
+// task only packages `main`, so nothing here reaches the release jar.
+val gametest: SourceSet = sourceSets.create("gametest") {
+    compileClasspath += sourceSets.main.get().compileClasspath + sourceSets.main.get().output
+    runtimeClasspath += sourceSets.main.get().runtimeClasspath + sourceSets.main.get().output
+}
+
+// NeoForge checks the EULA at the very top of the server's main and returns early if it is not
+// accepted — the process then exits 0 having run NO tests, which reads as a green build. Writing
+// the file up front removes that silent-pass trap.
+val writeGameTestEula = tasks.register("writeGameTestEula") {
+    val eula = layout.buildDirectory.file("gametest/eula.txt")
+    outputs.file(eula)
+    doLast {
+        eula.get().asFile.apply {
+            parentFile.mkdirs()
+            writeText("eula=true\n")
+        }
+    }
+}
+
 neoForge {
     version = sc.properties.get<String>("deps.neo_loader")
+
+    // Without this the gametest source set has no Minecraft on its classpath.
+    addModdingDependenciesTo(gametest)
 
     mods {
         register(sc.properties.get<String>("mod.id")) {
             sourceSet(sourceSets.main.get())
+        }
+        register("${sc.properties.get<String>("mod.id")}_gametest") {
+            sourceSet(gametest)
         }
     }
 
@@ -28,6 +55,16 @@ neoForge {
         register("server") {
             server()
             gameDirectory = rootProject.file("run/${project.name}")
+        }
+        // Headless in-world tests: `./gradlew :<node>:runGameTest`. GameTestServer exits with the
+        // number of failed required tests, so a failure fails the Gradle build.
+        register("gameTest") {
+            type = "gameTestServer"
+            sourceSet = gametest
+            gameDirectory = layout.buildDirectory.dir("gametest").get().asFile
+            disableIdeRun()
+            taskBefore(writeGameTestEula)
+            systemProperty("neoforge.enabledGameTestNamespaces", "${sc.properties.get<String>("mod.id")}_gametest")
         }
     }
 }
@@ -60,6 +97,11 @@ tasks {
         filesMatching(listOf("META-INF/neoforge.mods.toml", "pack.mcmeta")) { expand(props) }
 
         // Fabric-only metadata must not ship in the NeoForge jar.
+        exclude("fabric.mod.json")
+    }
+
+    // The gametest source set carries both loaders' manifests; keep Fabric's out of this side.
+    named<ProcessResources>("processGametestResources") {
         exclude("fabric.mod.json")
     }
 

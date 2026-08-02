@@ -1,0 +1,25 @@
+# Manifest for the test-only mod that carries the in-world GameTests. Never shipped: the `jar`
+# task only packages the main source set, so this whole source set is excluded automatically.
+modLoader = "javafml"
+loaderVersion = "[4,)"
+license = "MIT"
+
+[[mods]]
+modId = "loot_table_peeker_gametest"
+version = "1.0.0"
+displayName = "Loot Table Peeker Game Tests"
+description = '''In-world GameTest suite for Loot Table Peeker. Test-only, never published.'''
+
+[[dependencies.loot_table_peeker_gametest]]
+modId = "loot_table_peeker"
+type = "required"
+versionRange = "[0,)"
+ordering = "AFTER"
+side = "BOTH"
+
+[[dependencies.loot_table_peeker_gametest]]
+modId = "neoforge"
+type = "required"
+versionRange = "[0,)"
+ordering = "NONE"
+side = "BOTH"
