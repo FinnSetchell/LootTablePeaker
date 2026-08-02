@@ -1,0 +1,88 @@
+# Mod metadata and per-version dependencies.
+# Gradle's own launch options stay in gradle.properties — they cannot be read from here.
+#
+# Tables are selected per node by `properties { tags(version, loader) }` in stonecutter.gradle.kts,
+# so `deps.fabric_api` resolves to whatever the matching [fabric."<version>"] table declares.
+
+mod.id = "loot_table_peeker"
+mod.name = "Loot Table Peeker"
+# Artifact stem for the fleet filename convention {ModName}-{loader}-{mc}-{version}.jar.
+mod.archive_name = "LootTablePeeker"
+mod.group = "com.finndog.loottablepeeker"
+mod.version = "2.0.0"
+mod.author = "FinnSetchell"
+mod.license = "MIT"
+mod.description = "A server-side developer tool that stops loot containers from opening, showing their loot table id or a rerollable preview of the loot instead."
+
+# Loom variant for the obfuscated (pre-26.1) versions, applied by dev.kikugie.loom-back-compat.
+# From 26.1 Minecraft ships unobfuscated and the plugin swaps to plain fabric-loom automatically.
+loomx.loom_version = "1.17-SNAPSHOT"
+
+deps.fabric_loader = "0.19.3"
+
+# ------------------------------------------------------------------ 1.20.1 (Java 17)
+["1.20.1"]
+mod.mc_releases = ["1.20.1"]
+mod.pack_format = "15"
+mod.java = "17"
+
+[fabric."1.20.1"]
+mod.mc_compat = "~1.20.1"
+deps.fabric_api = "0.92.11+1.20.1"
+
+# ------------------------------------------------------------------ 1.21.1 (Java 21)
+["1.21.1"]
+mod.mc_releases = ["1.21", "1.21.1"]
+mod.pack_format = "34"
+mod.java = "21"
+
+[fabric."1.21.1"]
+mod.mc_compat = "~1.21.1"
+deps.fabric_api = "0.116.14+1.21.1"
+
+[neoforge."1.21.1"]
+mod.mc_compat = "[1.21.1, 1.22)"
+deps.neo_loader = "21.1.244"
+
+# ------------------------------------------------------------------ 1.21.11 (Java 21)
+["1.21.11"]
+mod.mc_releases = ["1.21.11"]
+mod.pack_format = "75"
+mod.java = "21"
+
+[fabric."1.21.11"]
+mod.mc_compat = "~1.21.11"
+deps.fabric_api = "0.141.5+1.21.11"
+
+[neoforge."1.21.11"]
+mod.mc_compat = "[1.21.11, 1.22)"
+deps.neo_loader = "21.11.44"
+
+# ------------------------------------------------------------------ 26.1.2 (Java 25, unobfuscated)
+["26.1.2"]
+mod.mc_releases = ["26.1", "26.1.1", "26.1.2"]
+mod.pack_format = "84"
+mod.java = "25"
+
+[fabric."26.1.2"]
+mod.mc_compat = "~26.1"
+deps.fabric_api = "0.155.2+26.1.2"
+
+[neoforge."26.1.2"]
+mod.mc_compat = "[26.1, 26.2)"
+deps.neo_loader = "26.1.2.87"
+
+# ------------------------------------------------------------------ 26.2 (Java 25, unobfuscated)
+["26.2"]
+mod.mc_releases = ["26.2"]
+mod.pack_format = "88"
+mod.java = "25"
+
+[fabric."26.2"]
+mod.mc_compat = "~26.2"
+deps.fabric_api = "0.155.2+26.2"
+
+[neoforge."26.2"]
+# NeoForge has no stable 26.2 release yet — every published 26.2.x is a beta.
+mod.mc_compat = "[26.2, 26.3)"
+deps.neo_loader = "26.2.0.35-beta"

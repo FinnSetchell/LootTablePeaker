@@ -1,8 +1,24 @@
 # LootTablePeaker
 
-A server-side Fabric dev tool for Minecraft 1.21.10 that stops loot containers from being opened, so you can inspect their loot tables without ever resolving them.
+A server-side developer tool that stops loot containers from being opened, so you can inspect their loot tables without ever resolving them.
 
 ![Loot Table Peeker Screenshot](https://pub-24a4e0e7ea8544a5b6f73c3a23512589.r2.dev/images/c689a5812b4748249468b955a1aeac84.png)
+
+## Supported versions
+
+Built with [Stonecutter](https://stonecutter.kikugie.dev/) from one shared source tree — each Minecraft version × loader is a Gradle node under `versions/`.
+
+| Minecraft | Fabric | NeoForge |
+| --- | --- | --- |
+| 1.20.1 | ✅ | — |
+| 1.21 / 1.21.1 | ✅ | ✅ |
+| 1.21.11 | ✅ | ✅ |
+| 26.1 – 26.1.2 | ✅ | ✅ |
+| 26.2 | ✅ | ✅ |
+
+1.20.1 is Fabric-only: NeoForge had not split from Forge at that version, so it ships as `net.neoforged:forge` and needs a different Gradle plugin than the modern NeoForge nodes.
+
+The mod is **server-side only** on both loaders — the preview GUI is built from vanilla chest screens, so vanilla clients need nothing installed.
 
 ## Modes
 
@@ -39,3 +55,25 @@ The info book repeats the reason on its `Rolled:` line.
 ## Config
 
 Stored server-wide in `config/loot_table_peeker.json` as `{"mode": "preview"}`. Config files from before modes existed (`{"enabled": true}`) are migrated automatically — `true` becomes `title`.
+
+## Building
+
+Every node builds independently:
+
+```bash
+./gradlew :1.21.1-fabric:build
+```
+
+Build every version and loader at once, collecting the jars into `build/libs/{version}/`:
+
+```bash
+./gradlew buildAndCollect
+```
+
+Switching which version the source tree is checked out as (this rewrites the versioned comments in `src/`):
+
+```bash
+./gradlew "Set active project to 26.2-neoforge"
+```
+
+Mod metadata and per-version dependency versions live in `stonecutter.properties.toml`; the node matrix is declared in `settings.gradle.kts`.

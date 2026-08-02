@@ -2,7 +2,7 @@ package com.finndog.loottablepeeker;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import net.fabricmc.loader.api.FabricLoader;
+import com.finndog.loottablepeeker.platform.Services;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -11,7 +11,8 @@ import java.nio.file.Path;
 public final class PeekConfig {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path CONFIG_PATH = FabricLoader.getInstance().getConfigDir().resolve("loot_table_peeker.json");
+    private static final Path CONFIG_PATH =
+        Services.PLATFORM.configDir().resolve(LootTablePeeker.MOD_ID + ".json");
 
     private static PeekMode mode = PeekMode.OFF;
 

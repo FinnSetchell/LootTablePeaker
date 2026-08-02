@@ -1,50 +1,52 @@
 package com.finndog.loottablepeeker;
 
-import net.fabricmc.fabric.api.event.player.UseBlockCallback;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
-import net.minecraft.world.level.storage.loot.LootTable;
 
+/**
+ * Loader-neutral interception logic. Each loader calls {@link #tryPeek} from its own
+ * right-click-block event and cancels the interaction when it returns {@code true}: Fabric from
+ * {@code UseBlockCallback}, NeoForge from {@code PlayerInteractEvent.RightClickBlock}.
+ */
 public final class ContainerInterceptHandler {
 
     private ContainerInterceptHandler() {}
 
-    public static void register() {
-        // UseBlockCallback fires server-side before the block's use() method runs,
-        // giving us a chance to cancel the interaction entirely.
-        UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
-            if (!(world instanceof ServerLevel serverLevel)) return InteractionResult.PASS;
+    /**
+     * @return {@code true} if the interaction was handled and the caller should cancel it, leaving
+     *         the container's loot table unresolved.
+     */
+    public static boolean tryPeek(Player player, Level level, BlockPos pos) {
+        if (!(level instanceof ServerLevel serverLevel)) return false;
 
-            PeekMode mode = PeekConfig.getMode();
-            if (mode == PeekMode.OFF) return InteractionResult.PASS;
-            if (player.isSpectator()) return InteractionResult.PASS;
+        PeekMode mode = PeekConfig.getMode();
+        if (mode == PeekMode.OFF) return false;
+        if (player.isSpectator()) return false;
+        if (!(player instanceof ServerPlayer serverPlayer)) return false;
 
-            BlockEntity be = world.getBlockEntity(hitResult.getBlockPos());
-            if (!(be instanceof RandomizableContainerBlockEntity container)) return InteractionResult.PASS;
+        BlockEntity be = level.getBlockEntity(pos);
+        if (!(be instanceof RandomizableContainerBlockEntity container)) return false;
 
-            // getLootTable() returns null once loot has been generated,
-            // so this only triggers on containers still holding an ungenerated loot table.
-            ResourceKey<LootTable> lootTableKey = container.getLootTable();
-            if (lootTableKey == null) return InteractionResult.PASS;
+        // A null id means the loot has already been generated, so the container is an ordinary
+        // chest now and should open normally.
+        String tableId = LootTableAccess.idOf(container);
+        if (tableId == null) return false;
 
-            ServerPlayer serverPlayer = (ServerPlayer) player;
-            if (mode == PeekMode.PREVIEW) {
-                LootPreviewMenu.open(serverPlayer, serverLevel, hitResult.getBlockPos(), container);
-            } else {
-                sendPeekTitle(serverPlayer, lootTableKey.location().toString());
-            }
-
-            // FAIL cancels the interaction without a swing animation or screen-open packet.
-            return InteractionResult.FAIL;
-        });
+        if (mode == PeekMode.PREVIEW) {
+            LootPreviewMenu.open(serverPlayer, serverLevel, pos, container, tableId);
+        } else {
+            sendPeekTitle(serverPlayer, tableId);
+        }
+        return true;
     }
 
     private static void sendPeekTitle(ServerPlayer player, String tableId) {

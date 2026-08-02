@@ -26,4 +26,9 @@ Thumbs.db
 
 # Fabric / Loom
 run/
+runs/
 .loom/
+
+# Stonecutter generates these per-node projects from settings.gradle.kts.
+# NOTE: gradle/wrapper/gradle-wrapper.properties must stay tracked.
+versions/

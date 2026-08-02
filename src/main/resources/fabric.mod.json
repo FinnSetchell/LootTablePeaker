@@ -1,21 +1,23 @@
 {
-  "schemaVersion": 1,
-  "id": "loot_table_peeker",
-  "version": "${version}",
-  "name": "Loot Table Peeker",
-  "description": "Prevents opening loot-bearing containers and displays their loot table key instead.",
-  "authors": ["finndog"],
-  "license": "MIT",
-  "environment": "*",
-  "entrypoints": {
-    "main": [
-      "com.finndog.loottablepeeker.LootTablePeeker"
-    ]
-  },
-  "depends": {
-    "fabricloader": ">=0.19.2",
-    "minecraft": "~1.21.10",
-    "java": ">=21",
-    "fabric-api": "*"
-  }
+    "schemaVersion": 1,
+    "id": "${id}",
+    "version": "${version}",
+    "name": "${name}",
+    "description": "${description}",
+    "authors": [
+        "${author}"
+    ],
+    "license": "${license}",
+    "environment": "*",
+    "entrypoints": {
+        "main": [
+            "com.finndog.loottablepeeker.fabric.LootTablePeekerFabric"
+        ]
+    },
+    "depends": {
+        "fabricloader": ">=${loader}",
+        "fabric-api": "*",
+        "minecraft": "${minecraft}",
+        "java": ">=${java}"
+    }
 }

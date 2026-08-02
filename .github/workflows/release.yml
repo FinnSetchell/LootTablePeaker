@@ -15,23 +15,32 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 21
+      # The matrix spans three toolchains: 1.20.1 needs Java 17, the 1.21.x nodes 21,
+      # and the 26.x nodes 25. Gradle picks the right one per node from mod.java in
+      # stonecutter.properties.toml, so all three have to be present.
+      - name: Set up JDKs
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
           distribution: 'temurin'
+          java-version: |
+            17
+            21
+            25
           cache: gradle
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Build with Gradle
-        run: ./gradlew build
+      # Unqualified, so Gradle runs it in every node project, collecting each jar into
+      # build/libs/{mod version}/. Stonecutter generates each node's sources for its own
+      # version independently of which version the checked-in tree is switched to.
+      - name: Build all nodes
+        run: ./gradlew buildAndCollect
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/libs/loot_table_peeker-*.jar
+          files: build/libs/**/*.jar
           name: Release ${{ github.ref_name }}
           draft: false
           prerelease: false
