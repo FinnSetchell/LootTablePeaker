@@ -1,5 +1,6 @@
 package com.finndog.loottablepeeker;
 
+import net.minecraft.ChatFormatting;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
@@ -36,6 +37,12 @@ public final class PeekCommand {
         // Kept from before modes existed; "on" used to mean the title behaviour.
         root.then(Commands.literal("on").executes(ctx -> executeSet(ctx, PeekMode.TITLE)));
 
+        // Separate from the mode: the particle cue is useful whether or not peeking is on.
+        root.then(Commands.literal("highlight")
+            .executes(PeekCommand::executeHighlightStatus)
+            .then(Commands.literal("on").executes(ctx -> executeSetHighlight(ctx, true)))
+            .then(Commands.literal("off").executes(ctx -> executeSetHighlight(ctx, false))));
+
         dispatcher.register(root);
     }
 
@@ -46,6 +53,29 @@ public final class PeekCommand {
                 .append(mode.displayName())
                 .append(Component.literal(" — " + mode.description())),
             false
+        );
+        return 1;
+    }
+
+    private static int executeHighlightStatus(CommandContext<CommandSourceStack> ctx) {
+        boolean on = PeekConfig.isHighlightEnabled();
+        ctx.getSource().sendSuccess(
+            () -> Component.literal("Loot highlight is ")
+                .append(Component.literal(on ? "on" : "off")
+                    .withStyle(on ? ChatFormatting.GREEN : ChatFormatting.RED)),
+            false
+        );
+        return 1;
+    }
+
+    private static int executeSetHighlight(CommandContext<CommandSourceStack> ctx, boolean enable) {
+        PeekConfig.setHighlightEnabled(enable);
+        ctx.getSource().sendSuccess(
+            () -> Component.literal("Loot highlight ")
+                .append(Component.literal(enable ? "on" : "off")
+                    .withStyle(enable ? ChatFormatting.GREEN : ChatFormatting.RED))
+                .append(Component.literal(" (server-wide) — marks containers that still hold loot")),
+            true
         );
         return 1;
     }

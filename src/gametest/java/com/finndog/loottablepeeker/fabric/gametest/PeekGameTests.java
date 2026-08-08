@@ -164,6 +164,43 @@ public class PeekGameTests {
         helper.succeed();
     }
 
+    /**
+     * The highlighter asks this of every nearby container once a second, so it must both answer
+     * correctly and — critically — leave the loot table alone. Probing a container through the
+     * {@code Container} interface ({@code isEmpty}, {@code getItem}) would unpack its loot instead,
+     * which would have this cosmetic feature quietly destroying exactly what the mod protects.
+     */
+    //$ gametest
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void highlightCheckDoesNotResolveLootTable(GameTestHelper helper) {
+        RandomizableContainerBlockEntity container = chestWithTable(helper, KNOWN_TABLE, FIXED_SEED);
+
+        helper.assertTrue(LootTableAccess.hasLootTable(container),
+                "a container with an unresolved loot table must report having one");
+        // Ask repeatedly: the highlighter runs every second for as long as a player is nearby.
+        for (int i = 0; i < 5; i++) {
+            LootTableAccess.hasLootTable(container);
+        }
+
+        helper.assertTrue(KNOWN_TABLE.equals(LootTableAccess.idOf(container)),
+                "the highlight check must not resolve the loot table, but the container reported "
+                        + LootTableAccess.idOf(container));
+        helper.succeed();
+    }
+
+    /** The cue must not appear on ordinary storage. */
+    //$ gametest
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void highlightCheckIgnoresPlainChests(GameTestHelper helper) {
+        helper.setBlock(CHEST, Blocks.CHEST);
+        RandomizableContainerBlockEntity container =
+                (RandomizableContainerBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(CHEST));
+
+        helper.assertFalse(LootTableAccess.hasLootTable(container),
+                "a chest with no loot table must not be highlighted");
+        helper.succeed();
+    }
+
     // ------------------------------------------------------------------ interception
 
     /**

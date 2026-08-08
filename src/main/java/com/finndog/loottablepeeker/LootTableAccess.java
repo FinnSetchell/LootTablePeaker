@@ -55,6 +55,27 @@ public final class LootTableAccess {
     }
 
     /**
+     * Whether the container still holds an unresolved loot table, without building its id.
+     *
+     * <p>Used by {@link LootHighlighter}, which asks this of every container near a player once a
+     * second. Note that the obvious cheap pre-filter — skipping non-empty containers — would be a
+     * disaster here: {@code RandomizableContainerBlockEntity} overrides {@code isEmpty()},
+     * {@code getItem()} and the rest to call {@code unpackLootTable} first, so probing a container
+     * through the {@code Container} interface generates its loot. Everything on this path has to go
+     * through the loot table fields directly.</p>
+     */
+    public static boolean hasLootTable(RandomizableContainerBlockEntity container) {
+        //? if >=1.21 {
+        return container.getLootTable() != null;
+        //?} else {
+        /*// 1.20.1 has no getter, so this costs a block entity serialisation per call. That is
+        // cheap for a container that still has its loot table (vanilla writes the two loot tags and
+        // skips the item list entirely), and bounded by the scan caps in LootHighlighter otherwise.
+        return container.saveWithoutMetadata().contains(RandomizableContainerBlockEntity.LOOT_TABLE_TAG);
+        *///?}
+    }
+
+    /**
      * Resolves the container's loot table, or returns {@code null} when nothing is registered under
      * that id. Distinguishing "not registered" from "registered but rolls nothing" is what lets the
      * preview explain an empty result instead of just showing a bare chest.

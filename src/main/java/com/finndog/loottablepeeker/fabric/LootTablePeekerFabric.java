@@ -5,8 +5,10 @@ package com.finndog.loottablepeeker.fabric;
 import com.finndog.loottablepeeker.ContainerInterceptHandler;
 import com.finndog.loottablepeeker.LootTablePeeker;
 import com.finndog.loottablepeeker.PeekCommand;
+import com.finndog.loottablepeeker.LootHighlighter;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.minecraft.world.InteractionResult;
 
@@ -26,6 +28,8 @@ public final class LootTablePeekerFabric implements ModInitializer {
 
         CommandRegistrationCallback.EVENT.register(
             (dispatcher, registryAccess, environment) -> PeekCommand.register(dispatcher));
+
+        ServerTickEvents.END_SERVER_TICK.register(LootHighlighter::tick);
     }
 }
 //?}

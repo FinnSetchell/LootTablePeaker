@@ -42,15 +42,36 @@ An empty preview is ambiguous, so when nothing shows up the reason is spelled ou
 
 The info book repeats the reason on its `Rolled:` line.
 
+## Highlighting loot containers
+
+A separate toggle marks every container that still holds an unresolved loot table with a single green sparkle just above it, once a second, for containers within about four chunks of a player:
+
+```bash
+/lootpeek highlight on
+```
+
+It is deliberately sparse — one particle per container per second, capped at 64 per world per sweep — so a room full of loot chests reads as a scattering of markers rather than a green haze. It is independent of the peek mode: you can highlight without intercepting anything, or intercept without highlighting.
+
+Particles are used rather than an outline or glow because they are the only spatial cue a server can push to an unmodified client, which keeps the mod server-side only.
+
 ## Commands
 - `/lootpeek` - shows the current mode
 - `/lootpeek off` - disables peeking server-wide
 - `/lootpeek title` - enables title mode server-wide
 - `/lootpeek preview` - enables preview mode server-wide
 
+- `/lootpeek highlight` - shows whether the container cue is on
+- `/lootpeek highlight on|off` - toggles the container cue server-wide
+
 `/lootpeek on` still works as an alias for `title`.
 
 *(Requires OP level 2)*
+
+## Client installation
+
+The mod is **server-side only** and is never required on a client. Everything it does — cancelling the interaction, the preview GUI, the highlight particles — is driven entirely from the server using vanilla screens and vanilla particles, so players connect with an unmodified client and lose no functionality.
+
+Installing it on a client anyway is fine and is what you want for singleplayer, where the integrated server runs the mod. The NeoForge builds set `displayTest = "IGNORE_ALL_VERSION"` so its mod-list handshake never rejects a client for missing the mod or carrying a different version; Fabric does not verify mod lists at all.
 
 ## Config
 

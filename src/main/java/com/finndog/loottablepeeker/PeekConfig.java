@@ -15,6 +15,8 @@ public final class PeekConfig {
         Services.PLATFORM.configDir().resolve(LootTablePeeker.MOD_ID + ".json");
 
     private static PeekMode mode = PeekMode.OFF;
+    /** Independent of {@link #mode}: the cue is useful whether or not interactions are intercepted. */
+    private static boolean highlight = false;
 
     private PeekConfig() {}
 
@@ -24,6 +26,15 @@ public final class PeekConfig {
 
     public static void setMode(PeekMode value) {
         mode = value;
+        save();
+    }
+
+    public static boolean isHighlightEnabled() {
+        return highlight;
+    }
+
+    public static void setHighlightEnabled(boolean value) {
+        highlight = value;
         save();
     }
 
@@ -43,13 +54,14 @@ public final class PeekConfig {
                     parsed = PeekMode.OFF;
                 }
                 mode = parsed;
-                return;
-            }
-
-            // Pre-mode configs stored a plain boolean; the old "on" behaviour is now the title mode.
-            if (data.enabled() != null) {
+            } else if (data.enabled() != null) {
+                // Pre-mode configs stored a plain boolean; the old "on" behaviour is now title mode.
                 mode = data.enabled() ? PeekMode.TITLE : PeekMode.OFF;
                 save();
+            }
+
+            if (data.highlight() != null) {
+                highlight = data.highlight();
             }
         } catch (IOException e) {
             LootTablePeeker.LOGGER.error("Failed to load config", e);
@@ -58,12 +70,16 @@ public final class PeekConfig {
 
     private static void save() {
         try {
-            Files.writeString(CONFIG_PATH, GSON.toJson(new Data(mode.id(), null)));
+            // A fresh server may not have a config directory yet, and a dedicated server writes this
+            // on the very first command.
+            Path parent = CONFIG_PATH.getParent();
+            if (parent != null) Files.createDirectories(parent);
+            Files.writeString(CONFIG_PATH, GSON.toJson(new Data(mode.id(), null, highlight)));
         } catch (IOException e) {
             LootTablePeeker.LOGGER.error("Failed to save config", e);
         }
     }
 
     /** {@code enabled} is only read, never written — it exists solely to migrate old config files. */
-    private record Data(String mode, Boolean enabled) {}
+    private record Data(String mode, Boolean enabled, Boolean highlight) {}
 }

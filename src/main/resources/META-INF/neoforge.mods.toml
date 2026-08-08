@@ -8,6 +8,12 @@ version = "${version}" #mandatory
 displayName = "${name}" #mandatory
 authors = "${author}" #optional
 description = '''${description}''' #mandatory
+# Everything this mod does is server-side, so clients must never be required to have it. Without
+# this, NeoForge's mod-list handshake rejects any client that does not carry a matching version —
+# which for a server-side dev tool means locking out every ordinary player. IGNORE_ALL_VERSION
+# skips the comparison in both directions, so a vanilla client, a client with a different version,
+# and a client with the same version all connect fine.
+displayTest = "IGNORE_ALL_VERSION"
 
 [[dependencies.${id}]] #optional
 modId = "neoforge" #mandatory
