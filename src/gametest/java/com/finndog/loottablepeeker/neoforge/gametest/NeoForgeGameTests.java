@@ -12,7 +12,6 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.TestData;
 import net.minecraft.gametest.framework.TestEnvironmentDefinition;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.Identifier;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.event.RegisterGameTestsEvent;
@@ -105,8 +104,17 @@ public final class NeoForgeGameTests {
         }
     }
 
-    private static Identifier id(String path) {
-        return Identifier.fromNamespaceAndPath(NAMESPACE, path);
+    // ResourceLocation was renamed to Identifier in 1.21.11, which splits this branch: 1.21.10 is
+    // above the GameTest rework but below the rename. Both spell fromNamespaceAndPath the same way,
+    // so only the type name differs.
+    //? if >=1.21.11 {
+    /^private static net.minecraft.resources.Identifier id(String path) {
+        return net.minecraft.resources.Identifier.fromNamespaceAndPath(NAMESPACE, path);
     }
+    ^///?} else {
+    private static net.minecraft.resources.ResourceLocation id(String path) {
+        return net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(NAMESPACE, path);
+    }
+    //?}
 }
 *///?}

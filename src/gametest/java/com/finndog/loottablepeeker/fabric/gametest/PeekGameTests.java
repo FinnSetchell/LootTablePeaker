@@ -88,6 +88,28 @@ public class PeekGameTests {
     }
 
     /**
+     * {@code GameTestHelper}'s assertion overloads differ across the matrix: 1.20.1 and 1.21.1 take
+     * a {@code String}, 1.21.10 takes only a {@code Component}, and 1.21.11 onwards take either.
+     * Routing every assertion through these two helpers keeps that split in one place rather than
+     * at two dozen call sites.
+     */
+    private static void check(GameTestHelper helper, boolean condition, String message) {
+        //? if >=1.21.10 {
+        /*helper.assertTrue(condition, net.minecraft.network.chat.Component.literal(message));
+        *///?} else {
+        helper.assertTrue(condition, message);
+        //?}
+    }
+
+    private static void checkFalse(GameTestHelper helper, boolean condition, String message) {
+        //? if >=1.21.10 {
+        /*helper.assertFalse(condition, net.minecraft.network.chat.Component.literal(message));
+        *///?} else {
+        helper.assertFalse(condition, message);
+        //?}
+    }
+
+    /**
      * 1.20.1 sets the id and seed together and names tables with a bare ResourceLocation; 1.21 split
      * the setters and moved to ResourceKey; 1.21.11 renamed ResourceLocation to Identifier.
      */
@@ -119,9 +141,9 @@ public class PeekGameTests {
     public void lootTableAccessRoundTripsIdAndSeed(GameTestHelper helper) {
         RandomizableContainerBlockEntity container = chestWithTable(helper, KNOWN_TABLE, FIXED_SEED);
 
-        helper.assertTrue(KNOWN_TABLE.equals(LootTableAccess.idOf(container)),
+        check(helper, KNOWN_TABLE.equals(LootTableAccess.idOf(container)),
                 "idOf must return the id that was just set, got " + LootTableAccess.idOf(container));
-        helper.assertTrue(LootTableAccess.seedOf(container) == FIXED_SEED,
+        check(helper, LootTableAccess.seedOf(container) == FIXED_SEED,
                 "seedOf must return the seed that was just set, got " + LootTableAccess.seedOf(container));
         helper.succeed();
     }
@@ -134,7 +156,7 @@ public class PeekGameTests {
         RandomizableContainerBlockEntity container =
                 (RandomizableContainerBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(CHEST));
 
-        helper.assertTrue(LootTableAccess.idOf(container) == null,
+        check(helper, LootTableAccess.idOf(container) == null,
                 "a chest with no loot table must report a null id");
         helper.succeed();
     }
@@ -146,7 +168,7 @@ public class PeekGameTests {
         RandomizableContainerBlockEntity container = chestWithTable(helper, KNOWN_TABLE, FIXED_SEED);
         LootTable table = LootTableAccess.tableOf(helper.getLevel().getServer(), container);
 
-        helper.assertTrue(table != null, KNOWN_TABLE + " must resolve to a real loot table");
+        check(helper, table != null, KNOWN_TABLE + " must resolve to a real loot table");
         helper.succeed();
     }
 
@@ -160,7 +182,7 @@ public class PeekGameTests {
         RandomizableContainerBlockEntity container = chestWithTable(helper, UNKNOWN_TABLE, FIXED_SEED);
         LootTable table = LootTableAccess.tableOf(helper.getLevel().getServer(), container);
 
-        helper.assertTrue(table == null, UNKNOWN_TABLE + " must not resolve to a loot table");
+        check(helper, table == null, UNKNOWN_TABLE + " must not resolve to a loot table");
         helper.succeed();
     }
 
@@ -175,14 +197,14 @@ public class PeekGameTests {
     public void highlightCheckDoesNotResolveLootTable(GameTestHelper helper) {
         RandomizableContainerBlockEntity container = chestWithTable(helper, KNOWN_TABLE, FIXED_SEED);
 
-        helper.assertTrue(LootTableAccess.hasLootTable(container),
+        check(helper, LootTableAccess.hasLootTable(container),
                 "a container with an unresolved loot table must report having one");
         // Ask repeatedly: the highlighter runs every second for as long as a player is nearby.
         for (int i = 0; i < 5; i++) {
             LootTableAccess.hasLootTable(container);
         }
 
-        helper.assertTrue(KNOWN_TABLE.equals(LootTableAccess.idOf(container)),
+        check(helper, KNOWN_TABLE.equals(LootTableAccess.idOf(container)),
                 "the highlight check must not resolve the loot table, but the container reported "
                         + LootTableAccess.idOf(container));
         helper.succeed();
@@ -196,7 +218,7 @@ public class PeekGameTests {
         RandomizableContainerBlockEntity container =
                 (RandomizableContainerBlockEntity) helper.getLevel().getBlockEntity(helper.absolutePos(CHEST));
 
-        helper.assertFalse(LootTableAccess.hasLootTable(container),
+        checkFalse(helper, LootTableAccess.hasLootTable(container),
                 "a chest with no loot table must not be highlighted");
         helper.succeed();
     }
@@ -216,7 +238,7 @@ public class PeekGameTests {
 
         rightClick(helper, player, CHEST);
 
-        helper.assertTrue(KNOWN_TABLE.equals(LootTableAccess.idOf(container)),
+        check(helper, KNOWN_TABLE.equals(LootTableAccess.idOf(container)),
                 "the loot table must survive a peek, but the container reported "
                         + LootTableAccess.idOf(container));
         helper.succeed();
@@ -232,7 +254,7 @@ public class PeekGameTests {
 
         rightClick(helper, player, CHEST);
 
-        helper.assertTrue(KNOWN_TABLE.equals(LootTableAccess.idOf(container)),
+        check(helper, KNOWN_TABLE.equals(LootTableAccess.idOf(container)),
                 "the loot table must survive a peek, but the container reported "
                         + LootTableAccess.idOf(container));
         helper.succeed();
@@ -251,7 +273,7 @@ public class PeekGameTests {
 
         rightClick(helper, player, CHEST);
 
-        helper.assertTrue(LootTableAccess.idOf(container) == null,
+        check(helper, LootTableAccess.idOf(container) == null,
                 "with peeking off the container must generate its loot and clear the table");
         helper.succeed();
     }
@@ -269,7 +291,7 @@ public class PeekGameTests {
 
         rightClick(helper, player, CHEST);
 
-        helper.assertTrue(player.containerMenu != player.inventoryMenu,
+        check(helper, player.containerMenu != player.inventoryMenu,
                 "a chest with no loot table must still open normally while peeking");
         helper.succeed();
     }
@@ -284,9 +306,9 @@ public class PeekGameTests {
 
         rightClick(helper, player, CHEST);
 
-        helper.assertTrue(player.containerMenu != player.inventoryMenu,
+        check(helper, player.containerMenu != player.inventoryMenu,
                 "preview mode must open a menu for the player");
-        helper.assertTrue(KNOWN_TABLE.equals(LootTableAccess.idOf(container)),
+        check(helper, KNOWN_TABLE.equals(LootTableAccess.idOf(container)),
                 "opening the preview must not resolve the loot table");
         helper.succeed();
     }

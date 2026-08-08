@@ -12,6 +12,7 @@ Built with [Stonecutter](https://stonecutter.kikugie.dev/) from one shared sourc
 | --- | --- | --- |
 | 1.20.1 | ✅ | — |
 | 1.21 / 1.21.1 | ✅ | ✅ |
+| 1.21.10 | ✅ | ✅ |
 | 1.21.11 | ✅ | ✅ |
 | 26.1 – 26.1.2 | ✅ | ✅ |
 | 26.2 | ✅ | ✅ |
@@ -105,7 +106,7 @@ Switching which version the source tree is checked out as (this rewrites the ver
 ./gradlew :1.21.1-fabric:runGameTest
 ```
 
-The nine tests cover the loot table accessors that differ per version, and drive the real server-side right-click path (`ServerPlayerGameMode#useItemOn`) so each loader's event wiring is exercised too — `UseBlockCallback` on Fabric, `PlayerInteractEvent.RightClickBlock` on NeoForge.
+The eleven tests cover the loot table accessors that differ per version, and drive the real server-side right-click path (`ServerPlayerGameMode#useItemOn`) so each loader's event wiring is exercised too — `UseBlockCallback` on Fabric, `PlayerInteractEvent.RightClickBlock` on NeoForge.
 
 Note that `GameTestHelper#useBlock` is deliberately **not** used: it calls the block state's own use method directly, skipping the game mode and therefore both of those hooks, which would make the interception tests pass without testing anything.
 
