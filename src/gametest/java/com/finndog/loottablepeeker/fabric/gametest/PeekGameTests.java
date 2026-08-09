@@ -262,6 +262,26 @@ public class PeekGameTests {
         helper.succeed();
     }
 
+    /** The marker style is per player too, so one player's choice must not follow another's. */
+    //$ gametest
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void highlightStyleIsPerPlayer(GameTestHelper helper) {
+        java.util.UUID alice = java.util.UUID.nameUUIDFromBytes("alice-style".getBytes());
+        java.util.UUID bob = java.util.UUID.nameUUIDFromBytes("bob-style".getBytes());
+
+        check(helper, PeekConfig.highlightStyleFor(alice) == com.finndog.loottablepeeker.PeekHighlightStyle.FAINT,
+                "an unset player defaults to the faint style");
+
+        PeekConfig.setHighlightStyleFor(alice, com.finndog.loottablepeeker.PeekHighlightStyle.CROSSHAIR);
+        check(helper, PeekConfig.highlightStyleFor(alice) == com.finndog.loottablepeeker.PeekHighlightStyle.CROSSHAIR,
+                "alice chose the crosshair style");
+        check(helper, PeekConfig.highlightStyleFor(bob) == com.finndog.loottablepeeker.PeekHighlightStyle.FAINT,
+                "bob never chose, so alice's style must not reach him");
+
+        PeekConfig.setHighlightStyleFor(alice, com.finndog.loottablepeeker.PeekHighlightStyle.FAINT);
+        helper.succeed();
+    }
+
     // ------------------------------------------------------------------ interception
 
     /**

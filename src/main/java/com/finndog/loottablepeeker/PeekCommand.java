@@ -58,12 +58,23 @@ public final class PeekCommand {
             .then(Commands.literal("on").executes(ctx -> executeSetHighlight(ctx, true)))
             .then(Commands.literal("off").executes(ctx -> executeSetHighlight(ctx, false)))
             .then(Commands.literal("reset").executes(PeekCommand::executeResetHighlight))
+            .then(styleNode())
             // Only ops may move the default, since it applies to everyone who has not chosen.
             .then(Commands.literal("default").requires(opOnly())
                 .then(Commands.literal("on").executes(ctx -> executeSetDefault(ctx, true)))
                 .then(Commands.literal("off").executes(ctx -> executeSetDefault(ctx, false)))));
 
         dispatcher.register(root);
+    }
+
+    /** {@code highlight style [faint|crosshair]} — also per player, so also ungated. */
+    private static LiteralArgumentBuilder<CommandSourceStack> styleNode() {
+        LiteralArgumentBuilder<CommandSourceStack> style = Commands.literal("style")
+            .executes(PeekCommand::executeStyleStatus);
+        for (PeekHighlightStyle value : PeekHighlightStyle.values()) {
+            style.then(Commands.literal(value.id()).executes(ctx -> executeSetStyle(ctx, value)));
+        }
+        return style;
     }
 
     // ------------------------------------------------------------------ mode (op-gated)
@@ -143,6 +154,34 @@ public final class PeekCommand {
         ctx.getSource().sendSuccess(
             () -> Component.literal("Your loot highlight now follows the server default: ")
                 .append(state(on)),
+            false
+        );
+        return 1;
+    }
+
+    private static int executeStyleStatus(CommandContext<CommandSourceStack> ctx) {
+        ServerPlayer player = requirePlayer(ctx);
+        if (player == null) return 0;
+
+        PeekHighlightStyle style = PeekConfig.highlightStyleFor(player.getUUID());
+        ctx.getSource().sendSuccess(
+            () -> Component.literal("Your highlight style is ")
+                .append(style.displayName())
+                .append(Component.literal(" — " + style.description())),
+            false
+        );
+        return 1;
+    }
+
+    private static int executeSetStyle(CommandContext<CommandSourceStack> ctx, PeekHighlightStyle style) {
+        ServerPlayer player = requirePlayer(ctx);
+        if (player == null) return 0;
+
+        PeekConfig.setHighlightStyleFor(player.getUUID(), style);
+        ctx.getSource().sendSuccess(
+            () -> Component.literal("Your highlight style is now ")
+                .append(style.displayName())
+                .append(Component.literal(" — " + style.description())),
             false
         );
         return 1;

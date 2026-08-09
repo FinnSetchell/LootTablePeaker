@@ -8,30 +8,49 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
 import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
 /**
- * Marks containers that still hold an unresolved loot table with a small particle, so they can be
- * picked out at a glance without opening anything.
+ * Draws a box of particles around containers that still hold an unresolved loot table.
  *
- * <p>Particles are used rather than a glow or outline because they are the only spatial cue a
- * server can push to an unmodified client. Nothing here requires the mod on the client side.</p>
+ * <p>Particles rather than a rendered outline because they are the only spatial cue a server can push
+ * to an unmodified client — every player sees this, with or without the mod installed. 26.2 also
+ * removed the immediate-mode box helpers entirely (there is no {@code ShapeRenderer}; outlines are
+ * submitted as render states to a deferred pipeline), so a rendered outline would have meant three
+ * separate implementations across the matrix. A particle box needs none.</p>
  *
- * <p>Tuned to stay out of the way: one particle per container per second, and only for containers
- * near a player. {@link #MAX_PER_CYCLE} keeps a room full of loot chests from turning into a green
- * haze — and, more importantly, bounds the work done per cycle.</p>
+ * <p>Two styles, chosen per player — see {@link PeekHighlightStyle}. {@code FAINT} marks every
+ * container nearby with just its eight corners, which stays legible in a room full of chests and is
+ * cheap enough to repeat once a second. {@code CROSSHAIR} draws a full wireframe, but only on the
+ * container the player is actually looking at, so it costs one box no matter how much loot is
+ * around.</p>
  */
 public final class LootHighlighter {
 
-    /** One sweep a second. Frequent enough to feel live, sparse enough not to nag. */
-    private static final int INTERVAL_TICKS = 20;
+    /** Faint sweeps are ambient, so once a second is plenty. */
+    private static final int FAINT_INTERVAL_TICKS = 20;
+    /** The crosshair box tracks where you look, so it needs to keep up. */
+    private static final int CROSSHAIR_INTERVAL_TICKS = 5;
     /** Chunks either side of a player's own; 3 is a little under a 64-block box. */
     private static final int CHUNK_RADIUS = 3;
-    /** Per level, per sweep. A dense loot room stops being useful as a cue well before this. */
-    private static final int MAX_PER_CYCLE = 64;
+    /**
+     * Containers marked per faint sweep. Lower than a single-particle cue would need, because each
+     * container now costs eight particle packets rather than one.
+     */
+    private static final int MAX_PER_CYCLE = 24;
+    /** How far the crosshair ray reaches; a little beyond creative reach. */
+    private static final double CROSSHAIR_REACH = 6.0;
+    /** Spacing along each edge of the crosshair box. Small enough to read as a solid line. */
+    private static final double DENSE_STEP = 0.25;
+    /** Keeps the box just clear of the block face so it does not sit inside the texture. */
+    private static final double PADDING = 0.02;
 
     private static int ticks;
 
@@ -39,28 +58,29 @@ public final class LootHighlighter {
 
     /** Called from each loader's server tick event. */
     public static void tick(MinecraftServer server) {
-        if (++ticks < INTERVAL_TICKS) return;
-        ticks = 0;
+        // Wrapped rather than left to grow, so the modulo stays meaningful indefinitely.
+        ticks = (ticks + 1) % (FAINT_INTERVAL_TICKS * CROSSHAIR_INTERVAL_TICKS);
+        boolean faintDue = ticks % FAINT_INTERVAL_TICKS == 0;
+        boolean crosshairDue = ticks % CROSSHAIR_INTERVAL_TICKS == 0;
+        if (!faintDue && !crosshairDue) return;
 
         for (ServerLevel level : server.getAllLevels()) {
             for (ServerPlayer player : level.players()) {
-                // Checked per player, not once for the server: the cue is a personal preference, so
-                // one player enabling it must not put particles on anyone else's screen.
+                // Checked per player: the cue is a personal preference, so one player enabling it
+                // must not put particles on anyone else's screen.
                 if (!PeekConfig.isHighlightEnabledFor(player.getUUID())) continue;
-                highlightFor(level, player);
+
+                if (PeekConfig.highlightStyleFor(player.getUUID()) == PeekHighlightStyle.CROSSHAIR) {
+                    if (crosshairDue) markLookedAt(level, player);
+                } else if (faintDue) {
+                    markNearby(level, player);
+                }
             }
         }
     }
 
-    /**
-     * Scans the chunks around one player and sends that player — and only that player — a particle
-     * for each loot container found.
-     *
-     * <p>The scan is per player rather than shared across the level because the particles are
-     * targeted. Two players standing together each get their own sweep, which costs a little more
-     * than a single broadcast but is what makes the setting personal.</p>
-     */
-    private static void highlightFor(ServerLevel level, ServerPlayer player) {
+    /** Corners only, on every loot container in range of this player. */
+    private static void markNearby(ServerLevel level, ServerPlayer player) {
         Set<Long> visited = new HashSet<>();
         int spawned = 0;
 
@@ -80,9 +100,58 @@ public final class LootHighlighter {
                     if (!(entry.getValue() instanceof RandomizableContainerBlockEntity container)) continue;
                     if (!LootTableAccess.hasLootTable(container)) continue;
 
-                    mark(level, player, entry.getKey());
+                    drawCorners(level, player, boxOf(level, entry.getKey()));
                     if (++spawned >= MAX_PER_CYCLE) return;
                 }
+            }
+        }
+    }
+
+    /** A full wireframe, but only on the container under the player's crosshair. */
+    private static void markLookedAt(ServerLevel level, ServerPlayer player) {
+        HitResult hit = player.pick(CROSSHAIR_REACH, 0.0F, false);
+        if (!(hit instanceof BlockHitResult blockHit)) return;
+
+        BlockPos pos = blockHit.getBlockPos();
+        if (!(level.getBlockEntity(pos) instanceof RandomizableContainerBlockEntity container)) return;
+        if (!LootTableAccess.hasLootTable(container)) return;
+
+        drawWireframe(level, player, boxOf(level, pos));
+    }
+
+    /**
+     * The block's own outline shape rather than a full cube, so the box hugs a chest instead of
+     * floating around it. Padded slightly to sit clear of the block face.
+     */
+    private static AABB boxOf(ServerLevel level, BlockPos pos) {
+        VoxelShape shape = level.getBlockState(pos).getShape(level, pos);
+        AABB local = shape.isEmpty() ? new AABB(0.0, 0.0, 0.0, 1.0, 1.0, 1.0) : shape.bounds();
+        return local.move(pos.getX(), pos.getY(), pos.getZ()).inflate(PADDING);
+    }
+
+    private static void drawCorners(ServerLevel level, ServerPlayer player, AABB box) {
+        for (double x : new double[]{box.minX, box.maxX}) {
+            for (double y : new double[]{box.minY, box.maxY}) {
+                for (double z : new double[]{box.minZ, box.maxZ}) {
+                    mark(level, player, x, y, z);
+                }
+            }
+        }
+    }
+
+    /** All twelve edges, stepped finely enough to read as a continuous line. */
+    private static void drawWireframe(ServerLevel level, ServerPlayer player, AABB box) {
+        for (double y : new double[]{box.minY, box.maxY}) {
+            for (double z : new double[]{box.minZ, box.maxZ}) {
+                for (double x = box.minX; x <= box.maxX; x += DENSE_STEP) mark(level, player, x, y, z);
+            }
+            for (double x : new double[]{box.minX, box.maxX}) {
+                for (double z = box.minZ; z <= box.maxZ; z += DENSE_STEP) mark(level, player, x, y, z);
+            }
+        }
+        for (double x : new double[]{box.minX, box.maxX}) {
+            for (double z : new double[]{box.minZ, box.maxZ}) {
+                for (double y = box.minY; y <= box.maxY; y += DENSE_STEP) mark(level, player, x, y, z);
             }
         }
     }
@@ -90,10 +159,10 @@ public final class LootHighlighter {
     /**
      * Packs a chunk coordinate pair into a set key.
      *
-     * <p>Done by hand rather than with {@code ChunkPos}: 26.1 turned that class into a record, so
-     * the {@code x}/{@code z} fields became private accessors and {@code asLong} was renamed to
-     * {@code pack}. Deriving the chunk coordinate by shifting and packing the pair here is plain
-     * arithmetic, identical on every supported version, and keeps this file conditional-free.</p>
+     * <p>Done by hand rather than with {@code ChunkPos}: 26.1 turned that class into a record, so the
+     * {@code x}/{@code z} fields became private accessors and {@code asLong} was renamed to
+     * {@code pack}. Shifting and packing the pair here is plain arithmetic, identical on every
+     * supported version, and keeps this file free of that churn.</p>
      */
     private static long packChunk(int x, int z) {
         return ((long) x << 32) | (z & 0xFFFFFFFFL);
@@ -104,22 +173,18 @@ public final class LootHighlighter {
      *
      * <p>Both boolean flags are false on purpose. {@code longDistance} is unnecessary — nothing is
      * marked beyond a few chunks anyway — and forcing visibility would override the player's own
-     * particle setting, which would be a strange thing for an opt-in cue to do.</p>
+     * particle setting, which an opt-in cue has no business doing. Zero offset and zero speed keep
+     * each particle exactly where it is put, which is what makes the box read as an edge rather than
+     * a cloud.</p>
      */
-    private static void mark(ServerLevel level, ServerPlayer player, BlockPos pos) {
-        // Just above the block, jittered slightly so a row of chests does not read as a straight
-        // line of identical dots. Speed 0 keeps the particle where it is put.
-        double x = pos.getX() + 0.5;
-        double y = pos.getY() + 1.05;
-        double z = pos.getZ() + 0.5;
-
+    private static void mark(ServerLevel level, ServerPlayer player, double x, double y, double z) {
         // 1.21.10 added an "always visible" flag to the targeted overload.
         //? if >=1.21.10 {
         /*level.sendParticles(player, ParticleTypes.HAPPY_VILLAGER, false, false,
-                x, y, z, 1, 0.15, 0.05, 0.15, 0.0);
+                x, y, z, 1, 0.0, 0.0, 0.0, 0.0);
         *///?} else {
         level.sendParticles(player, ParticleTypes.HAPPY_VILLAGER, false,
-                x, y, z, 1, 0.15, 0.05, 0.15, 0.0);
+                x, y, z, 1, 0.0, 0.0, 0.0, 0.0);
         //?}
     }
 }

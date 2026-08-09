@@ -30,6 +30,7 @@ public final class PeekConfigScreen extends Screen {
     private final Screen parent;
     private Button modeButton;
     private Button highlightButton;
+    private Button styleButton;
 
     public PeekConfigScreen(Screen parent) {
         super(Component.literal("Loot Table Peeker"));
@@ -71,11 +72,20 @@ public final class PeekConfigScreen extends Screen {
             this.highlightButton.setMessage(highlightLabel(true));
         }).bounds(left, top + 24, 220, 20).build());
 
+        this.styleButton = addRenderableWidget(Button.builder(styleLabel(editable), button -> {
+            com.finndog.loottablepeeker.PeekHighlightStyle[] styles =
+                    com.finndog.loottablepeeker.PeekHighlightStyle.values();
+            int next = (PeekConfig.highlightStyleFor(self()).ordinal() + 1) % styles.length;
+            PeekConfig.setHighlightStyleFor(self(), styles[next]);
+            this.styleButton.setMessage(styleLabel(true));
+        }).bounds(left, top + 48, 220, 20).build());
+
         addRenderableWidget(Button.builder(Component.literal("Done"), button -> onClose())
-                .bounds(left + 60, top + 60, 100, 20).build());
+                .bounds(left + 60, top + 84, 100, 20).build());
 
         this.modeButton.active = editable;
         this.highlightButton.active = editable;
+        this.styleButton.active = editable;
     }
 
     private static Component modeLabel(boolean editable) {
@@ -90,6 +100,12 @@ public final class PeekConfigScreen extends Screen {
         return Component.literal("Highlight loot containers: ")
                 .append(Component.literal(on ? "on" : "off")
                         .withStyle(on ? ChatFormatting.GREEN : ChatFormatting.RED));
+    }
+
+    private Component styleLabel(boolean editable) {
+        if (!editable) return serverSideNotice();
+        return Component.literal("Marker style: ")
+                .append(PeekConfig.highlightStyleFor(self()).displayName());
     }
 
     /** Shown instead of a control when the settings in effect belong to a remote server. */

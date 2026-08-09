@@ -31,6 +31,9 @@ public final class PeekConfig {
      * needing permissions, and one player turning it on must not put particles on everyone's screen.
      */
     private static final Map<UUID, Boolean> highlightOverrides = new HashMap<>();
+    /** Per-player marker style; also personal, and independent of whether the cue is on. */
+    private static final Map<UUID, PeekHighlightStyle> highlightStyles = new HashMap<>();
+    private static PeekHighlightStyle defaultStyle = PeekHighlightStyle.FAINT;
 
     private PeekConfig() {}
 
@@ -74,6 +77,15 @@ public final class PeekConfig {
         return highlightOverrides.containsKey(player);
     }
 
+    public static PeekHighlightStyle highlightStyleFor(UUID player) {
+        return highlightStyles.getOrDefault(player, defaultStyle);
+    }
+
+    public static void setHighlightStyleFor(UUID player, PeekHighlightStyle style) {
+        highlightStyles.put(player, style);
+        save();
+    }
+
     public static void load() {
         if (!Files.exists(CONFIG_PATH)) {
             save();
@@ -98,6 +110,22 @@ public final class PeekConfig {
 
             if (data.highlight() != null) {
                 highlight = data.highlight();
+            }
+
+            highlightStyles.clear();
+            if (data.highlightStyles() != null) {
+                data.highlightStyles().forEach((id, styleId) -> {
+                    PeekHighlightStyle style = PeekHighlightStyle.byId(styleId);
+                    if (style == null) {
+                        LootTablePeeker.LOGGER.warn("Ignoring unknown highlight style '{}' in config", styleId);
+                        return;
+                    }
+                    try {
+                        highlightStyles.put(UUID.fromString(id), style);
+                    } catch (IllegalArgumentException e) {
+                        LootTablePeeker.LOGGER.warn("Ignoring malformed player UUID in config: {}", id);
+                    }
+                });
             }
 
             highlightOverrides.clear();
@@ -125,7 +153,10 @@ public final class PeekConfig {
             if (parent != null) Files.createDirectories(parent);
             Map<String, Boolean> overrides = new LinkedHashMap<>();
             highlightOverrides.forEach((id, value) -> overrides.put(id.toString(), value));
-            Files.writeString(CONFIG_PATH, GSON.toJson(new Data(mode.id(), null, highlight, overrides)));
+            Map<String, String> styles = new LinkedHashMap<>();
+            highlightStyles.forEach((id, style) -> styles.put(id.toString(), style.id()));
+            Files.writeString(CONFIG_PATH,
+                GSON.toJson(new Data(mode.id(), null, highlight, overrides, styles)));
         } catch (IOException e) {
             LootTablePeeker.LOGGER.error("Failed to save config", e);
         }
@@ -133,5 +164,6 @@ public final class PeekConfig {
 
     /** {@code enabled} is only read, never written — it exists solely to migrate old config files. */
     private record Data(String mode, Boolean enabled, Boolean highlight,
-                        Map<String, Boolean> highlightPlayers) {}
+                        Map<String, Boolean> highlightPlayers,
+                        Map<String, String> highlightStyles) {}
 }

@@ -47,28 +47,50 @@ The info book repeats the reason on its `Rolled:` line.
 
 ## Highlighting loot containers
 
-A separate toggle marks every container that still holds an unresolved loot table with a single green sparkle just above it, once a second, for containers within about four chunks of a player:
+Containers that still hold an unresolved loot table can be marked with a box of particles. This is a **personal setting that any player controls for themselves** — no permissions needed, and one player enabling it puts nothing on anyone else's screen:
 
 ```bash
 /lootpeek highlight on
 ```
 
-It is deliberately sparse — one particle per container per second, capped at 64 per world per sweep — so a room full of loot chests reads as a scattering of markers rather than a green haze. It is independent of the peek mode: you can highlight without intercepting anything, or intercept without highlighting.
+Two styles, also per player:
 
-Particles are used rather than an outline or glow because they are the only spatial cue a server can push to an unmodified client, which keeps the mod server-side only.
+| Style | What it does |
+| --- | --- |
+| `faint` (default) | Eight corner particles on **every** loot container within about four chunks, once a second |
+| `crosshair` | A full twelve-edge wireframe on **only** the container you are looking at, four times a second |
+
+```bash
+/lootpeek highlight style crosshair
+```
+
+The two differ in scope as well as density, which is what keeps both cheap: `faint` is bounded by a per-sweep container cap, and `crosshair` is one box however much loot is in the room. The box is built from the block's own outline shape, so on a chest it hugs the chest model rather than a full cube.
+
+It is independent of the peek mode: you can highlight without intercepting anything, or intercept without highlighting.
+
+Particles are used rather than a rendered outline because they are the only spatial cue a server can push to an unmodified client — every player sees this, with or without the mod. 26.2 also removed the immediate-mode box helpers entirely (`ShapeRenderer` is gone; outlines are submitted as render states to a deferred pipeline), so a rendered outline would have needed three separate implementations across the matrix. A particle box needs none.
 
 ## Commands
-- `/lootpeek` - shows the current mode
+
+Op level 2 — these change how containers behave for everyone:
+
 - `/lootpeek off` - disables peeking server-wide
 - `/lootpeek title` - enables title mode server-wide
 - `/lootpeek preview` - enables preview mode server-wide
+- `/lootpeek highlight default on|off` - the highlight default for players who have not chosen
 
-- `/lootpeek highlight` - shows whether the container cue is on
-- `/lootpeek highlight on|off` - toggles the container cue server-wide
+Any player — these are personal display preferences:
+
+- `/lootpeek` - shows the current mode
+- `/lootpeek highlight` - shows whether your cue is on
+- `/lootpeek highlight on|off` - toggles **your** cue
+- `/lootpeek highlight reset` - go back to following the server default
+- `/lootpeek highlight style` - shows your marker style
+- `/lootpeek highlight style faint|crosshair` - sets **your** marker style
 
 `/lootpeek on` still works as an alias for `title`.
 
-*(Requires OP level 2)*
+Permissions are applied per subcommand rather than on the root: a `requires` on a Brigadier root node gates the entire subtree, which would lock ordinary players out of their own setting.
 
 ## Client installation
 
@@ -78,7 +100,7 @@ Installing it on a client anyway is fine and is what you want for singleplayer, 
 
 ## Config
 
-Stored server-wide in `config/loot_table_peeker.json` as `{"mode": "preview"}`. Config files from before modes existed (`{"enabled": true}`) are migrated automatically — `true` becomes `title`.
+Stored server-wide in `config/loot_table_peeker.json`: the peek mode, the highlight default, and each player's own highlight preference and marker style by UUID. Config files from before modes existed (`{"enabled": true}`) are migrated automatically — `true` becomes `title`.
 
 ## Building
 
@@ -108,7 +130,7 @@ Switching which version the source tree is checked out as (this rewrites the ver
 ./gradlew :1.21.1-fabric:runGameTest
 ```
 
-The eleven tests cover the loot table accessors that differ per version, and drive the real server-side right-click path (`ServerPlayerGameMode#useItemOn`) so each loader's event wiring is exercised too — `UseBlockCallback` on Fabric, `PlayerInteractEvent.RightClickBlock` on NeoForge.
+The tests cover the loot table accessors that differ per version, and drive the real server-side right-click path (`ServerPlayerGameMode#useItemOn`) so each loader's event wiring is exercised too — `UseBlockCallback` on Fabric, `PlayerInteractEvent.RightClickBlock` on NeoForge.
 
 Note that `GameTestHelper#useBlock` is deliberately **not** used: it calls the block state's own use method directly, skipping the game mode and therefore both of those hooks, which would make the interception tests pass without testing anything.
 
