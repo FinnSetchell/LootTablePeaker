@@ -19,6 +19,14 @@ val gametest: SourceSet = sourceSets.create("gametest") {
     runtimeClasspath += sourceSets.main.get().runtimeClasspath + sourceSets.main.get().output
 }
 
+repositories {
+    // Mod Menu. Scoped so it cannot shadow anything else on the classpath.
+    exclusiveContent {
+        forRepository { maven("https://maven.terraformersmc.com/releases/") { name = "TerraformersMC" } }
+        filter { includeGroupAndSubgroups("com.terraformersmc") }
+    }
+}
+
 dependencies {
     minecraft("com.mojang:minecraft:${sc.current.version}")
     // No-op on the un-obfuscated versions; applies Mojang mappings on the obfuscated ones.
@@ -26,6 +34,13 @@ dependencies {
 
     modImplementation("net.fabricmc:fabric-loader:${sc.properties.get<String>("deps.fabric_loader")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${sc.properties.get<String>("deps.fabric_api")}")
+
+    // Compile-time only in effect: the `modmenu` entrypoint is read by Mod Menu itself, so with Mod
+    // Menu absent nothing loads PeekModMenu and the mod runs unchanged. Declared as `suggests` in
+    // fabric.mod.json rather than `depends` for the same reason.
+    modImplementation("com.terraformersmc:modmenu:${sc.properties.get<String>("deps.modmenu")}") {
+        exclude(group = "net.fabricmc.fabric-api")
+    }
 }
 
 loom {

@@ -10,12 +10,14 @@ Built with [Stonecutter](https://stonecutter.kikugie.dev/) from one shared sourc
 
 | Minecraft | Fabric | NeoForge |
 | --- | --- | --- |
-| 1.20.1 | ✅ | — |
-| 1.21 / 1.21.1 | ✅ | ✅ |
+| 1.20 – 1.20.1 | ✅ | — |
+| 1.21 – 1.21.1 | ✅ | ✅ |
 | 1.21.10 | ✅ | ✅ |
 | 1.21.11 | ✅ | ✅ |
 | 26.1 – 26.1.2 | ✅ | ✅ |
 | 26.2 | ✅ | ✅ |
+
+Each jar declares an exact bounded range, so installing one on a version it was not built for is refused at load rather than crashing partway in. A version range means one jar covers those releases: the mod is compiled against the highest of them, and every API it touches was checked to be identical on the others.
 
 1.20.1 is Fabric-only: NeoForge had not split from Forge at that version, so it ships as `net.neoforged:forge` and needs a different Gradle plugin than the modern NeoForge nodes.
 

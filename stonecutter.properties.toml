@@ -9,7 +9,7 @@ mod.name = "Loot Table Peeker"
 # Artifact stem for the fleet filename convention {ModName}-{loader}-{mc}-{version}.jar.
 mod.archive_name = "LootTablePeeker"
 mod.group = "com.finndog.loottablepeeker"
-mod.version = "2.1.0"
+mod.version = "2.2.0"
 mod.author = "FinnSetchell"
 mod.license = "MIT"
 mod.description = "A server-side developer tool that stops loot containers from opening, showing their loot table id or a rerollable preview of the loot instead."
@@ -22,13 +22,14 @@ deps.fabric_loader = "0.19.3"
 
 # ------------------------------------------------------------------ 1.20.1 (Java 17)
 ["1.20.1"]
-mod.mc_releases = ["1.20.1"]
+mod.mc_releases = ["1.20", "1.20.1"]
 mod.pack_format = "15"
 mod.java = "17"
 
 [fabric."1.20.1"]
-mod.mc_compat = "~1.20.1"
+mod.mc_compat = ">=1.20 <1.20.2"
 deps.fabric_api = "0.92.11+1.20.1"
+deps.modmenu = "7.2.2"
 
 # ------------------------------------------------------------------ 1.21.1 (Java 21)
 ["1.21.1"]
@@ -37,11 +38,12 @@ mod.pack_format = "34"
 mod.java = "21"
 
 [fabric."1.21.1"]
-mod.mc_compat = "~1.21.1"
+mod.mc_compat = ">=1.21 <1.21.2"
 deps.fabric_api = "0.116.14+1.21.1"
+deps.modmenu = "11.0.4"
 
 [neoforge."1.21.1"]
-mod.mc_compat = "[1.21.1, 1.22)"
+mod.mc_compat = "[1.21, 1.21.2)"
 deps.neo_loader = "21.1.244"
 
 # ------------------------------------------------------------------ 1.21.10 (Java 21)
@@ -54,11 +56,12 @@ mod.pack_format = "69"
 mod.java = "21"
 
 [fabric."1.21.10"]
-mod.mc_compat = "~1.21.10"
+mod.mc_compat = ">=1.21.10 <1.21.11"
 deps.fabric_api = "0.138.3+1.21.10"
+deps.modmenu = "16.0.1"
 
 [neoforge."1.21.10"]
-mod.mc_compat = "[1.21.10, 1.22)"
+mod.mc_compat = "[1.21.10, 1.21.11)"
 deps.neo_loader = "21.10.64"
 
 # ------------------------------------------------------------------ 1.21.11 (Java 21)
@@ -68,11 +71,12 @@ mod.pack_format = "75"
 mod.java = "21"
 
 [fabric."1.21.11"]
-mod.mc_compat = "~1.21.11"
+mod.mc_compat = ">=1.21.11 <1.21.12"
 deps.fabric_api = "0.141.5+1.21.11"
+deps.modmenu = "17.0.0"
 
 [neoforge."1.21.11"]
-mod.mc_compat = "[1.21.11, 1.22)"
+mod.mc_compat = "[1.21.11, 1.21.12)"
 deps.neo_loader = "21.11.44"
 
 # ------------------------------------------------------------------ 26.1.2 (Java 25, unobfuscated)
@@ -82,8 +86,9 @@ mod.pack_format = "84"
 mod.java = "25"
 
 [fabric."26.1.2"]
-mod.mc_compat = "~26.1"
+mod.mc_compat = ">=26.1 <26.2"
 deps.fabric_api = "0.155.2+26.1.2"
+deps.modmenu = "18.0.0"
 
 [neoforge."26.1.2"]
 mod.mc_compat = "[26.1, 26.2)"
@@ -96,8 +101,9 @@ mod.pack_format = "88"
 mod.java = "25"
 
 [fabric."26.2"]
-mod.mc_compat = "~26.2"
+mod.mc_compat = ">=26.2 <26.3"
 deps.fabric_api = "0.155.2+26.2"
+deps.modmenu = "20.0.1"
 
 [neoforge."26.2"]
 # NeoForge has no stable 26.2 release yet — every published 26.2.x is a beta.

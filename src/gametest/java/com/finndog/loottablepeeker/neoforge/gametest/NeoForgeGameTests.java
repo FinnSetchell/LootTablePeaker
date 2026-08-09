@@ -62,6 +62,7 @@ public final class NeoForgeGameTests {
         add("unknown_table_does_not_resolve", tests::unknownTableDoesNotResolve);
         add("highlight_check_does_not_resolve_loot_table", tests::highlightCheckDoesNotResolveLootTable);
         add("highlight_check_ignores_plain_chests", tests::highlightCheckIgnoresPlainChests);
+        add("highlight_preference_is_per_player", tests::highlightPreferenceIsPerPlayer);
         add("preview_mode_leaves_loot_table_unresolved", tests::previewModeLeavesLootTableUnresolved);
         add("title_mode_leaves_loot_table_unresolved", tests::titleModeLeavesLootTableUnresolved);
         add("off_mode_resolves_loot_table_as_vanilla", tests::offModeResolvesLootTableAsVanilla);

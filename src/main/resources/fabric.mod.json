@@ -7,11 +7,20 @@
     "authors": [
         "${author}"
     ],
+    "contact": {
+        "homepage": "https://github.com/FinnSetchell/LootTablePeaker",
+        "sources": "https://github.com/FinnSetchell/LootTablePeaker",
+        "issues": "https://github.com/FinnSetchell/LootTablePeaker/issues"
+    },
     "license": "${license}",
+    "icon": "assets/${id}/icon.png",
     "environment": "*",
     "entrypoints": {
         "main": [
             "com.finndog.loottablepeeker.fabric.LootTablePeekerFabric"
+        ],
+        "modmenu": [
+            "com.finndog.loottablepeeker.fabric.gui.PeekModMenu"
         ]
     },
     "depends": {
@@ -19,5 +28,8 @@
         "fabric-api": "*",
         "minecraft": "${minecraft}",
         "java": ">=${java}"
+    },
+    "suggests": {
+        "modmenu": "*"
     }
 }

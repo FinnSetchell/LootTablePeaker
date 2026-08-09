@@ -39,43 +39,49 @@ public final class LootHighlighter {
 
     /** Called from each loader's server tick event. */
     public static void tick(MinecraftServer server) {
-        if (!PeekConfig.isHighlightEnabled()) return;
         if (++ticks < INTERVAL_TICKS) return;
         ticks = 0;
 
         for (ServerLevel level : server.getAllLevels()) {
-            highlight(level);
+            for (ServerPlayer player : level.players()) {
+                // Checked per player, not once for the server: the cue is a personal preference, so
+                // one player enabling it must not put particles on anyone else's screen.
+                if (!PeekConfig.isHighlightEnabledFor(player.getUUID())) continue;
+                highlightFor(level, player);
+            }
         }
     }
 
-    private static void highlight(ServerLevel level) {
-        if (level.players().isEmpty()) return;
-
-        // Players standing together share chunks; visiting each chunk once keeps a crowd from
-        // multiplying both the scan cost and the particle count.
+    /**
+     * Scans the chunks around one player and sends that player — and only that player — a particle
+     * for each loot container found.
+     *
+     * <p>The scan is per player rather than shared across the level because the particles are
+     * targeted. Two players standing together each get their own sweep, which costs a little more
+     * than a single broadcast but is what makes the setting personal.</p>
+     */
+    private static void highlightFor(ServerLevel level, ServerPlayer player) {
         Set<Long> visited = new HashSet<>();
         int spawned = 0;
 
-        for (ServerPlayer player : level.players()) {
-            int centreX = player.getBlockX() >> 4;
-            int centreZ = player.getBlockZ() >> 4;
-            for (int dx = -CHUNK_RADIUS; dx <= CHUNK_RADIUS; dx++) {
-                for (int dz = -CHUNK_RADIUS; dz <= CHUNK_RADIUS; dz++) {
-                    int chunkX = centreX + dx;
-                    int chunkZ = centreZ + dz;
-                    if (!visited.add(packChunk(chunkX, chunkZ))) continue;
+        int centreX = player.getBlockX() >> 4;
+        int centreZ = player.getBlockZ() >> 4;
+        for (int dx = -CHUNK_RADIUS; dx <= CHUNK_RADIUS; dx++) {
+            for (int dz = -CHUNK_RADIUS; dz <= CHUNK_RADIUS; dz++) {
+                int chunkX = centreX + dx;
+                int chunkZ = centreZ + dz;
+                if (!visited.add(packChunk(chunkX, chunkZ))) continue;
 
-                    // getChunkNow rather than getChunk: a cosmetic cue must never force a load.
-                    LevelChunk chunk = level.getChunkSource().getChunkNow(chunkX, chunkZ);
-                    if (chunk == null) continue;
+                // getChunkNow rather than getChunk: a cosmetic cue must never force a load.
+                LevelChunk chunk = level.getChunkSource().getChunkNow(chunkX, chunkZ);
+                if (chunk == null) continue;
 
-                    for (Map.Entry<BlockPos, BlockEntity> entry : chunk.getBlockEntities().entrySet()) {
-                        if (!(entry.getValue() instanceof RandomizableContainerBlockEntity container)) continue;
-                        if (!LootTableAccess.hasLootTable(container)) continue;
+                for (Map.Entry<BlockPos, BlockEntity> entry : chunk.getBlockEntities().entrySet()) {
+                    if (!(entry.getValue() instanceof RandomizableContainerBlockEntity container)) continue;
+                    if (!LootTableAccess.hasLootTable(container)) continue;
 
-                        mark(level, entry.getKey());
-                        if (++spawned >= MAX_PER_CYCLE) return;
-                    }
+                    mark(level, player, entry.getKey());
+                    if (++spawned >= MAX_PER_CYCLE) return;
                 }
             }
         }
@@ -93,11 +99,27 @@ public final class LootHighlighter {
         return ((long) x << 32) | (z & 0xFFFFFFFFL);
     }
 
-    private static void mark(ServerLevel level, BlockPos pos) {
+    /**
+     * Sends one particle to a single player.
+     *
+     * <p>Both boolean flags are false on purpose. {@code longDistance} is unnecessary — nothing is
+     * marked beyond a few chunks anyway — and forcing visibility would override the player's own
+     * particle setting, which would be a strange thing for an opt-in cue to do.</p>
+     */
+    private static void mark(ServerLevel level, ServerPlayer player, BlockPos pos) {
         // Just above the block, jittered slightly so a row of chests does not read as a straight
         // line of identical dots. Speed 0 keeps the particle where it is put.
-        level.sendParticles(ParticleTypes.HAPPY_VILLAGER,
-                pos.getX() + 0.5, pos.getY() + 1.05, pos.getZ() + 0.5,
-                1, 0.15, 0.05, 0.15, 0.0);
+        double x = pos.getX() + 0.5;
+        double y = pos.getY() + 1.05;
+        double z = pos.getZ() + 0.5;
+
+        // 1.21.10 added an "always visible" flag to the targeted overload.
+        //? if >=1.21.10 {
+        /*level.sendParticles(player, ParticleTypes.HAPPY_VILLAGER, false, false,
+                x, y, z, 1, 0.15, 0.05, 0.15, 0.0);
+        *///?} else {
+        level.sendParticles(player, ParticleTypes.HAPPY_VILLAGER, false,
+                x, y, z, 1, 0.15, 0.05, 0.15, 0.0);
+        //?}
     }
 }

@@ -223,6 +223,45 @@ public class PeekGameTests {
         helper.succeed();
     }
 
+    /**
+     * The highlight is a personal preference, so one player's choice must not follow another's, and
+     * a player who has not chosen must follow the server default. Getting this wrong would put
+     * particles on the screen of someone who never asked for them.
+     */
+    //$ gametest
+    @GameTest(template = FabricGameTest.EMPTY_STRUCTURE)
+    public void highlightPreferenceIsPerPlayer(GameTestHelper helper) {
+        java.util.UUID alice = java.util.UUID.nameUUIDFromBytes("alice".getBytes());
+        java.util.UUID bob = java.util.UUID.nameUUIDFromBytes("bob".getBytes());
+        PeekConfig.clearHighlightFor(alice);
+        PeekConfig.clearHighlightFor(bob);
+
+        PeekConfig.setHighlightEnabled(false);
+        PeekConfig.setHighlightEnabledFor(alice, true);
+
+        check(helper, PeekConfig.isHighlightEnabledFor(alice),
+                "alice opted in, so she must see the highlight");
+        checkFalse(helper, PeekConfig.isHighlightEnabledFor(bob),
+                "bob never opted in, so alice's choice must not reach him");
+
+        // The server default only applies to players without a preference of their own.
+        PeekConfig.setHighlightEnabled(true);
+        check(helper, PeekConfig.isHighlightEnabledFor(bob),
+                "bob follows the server default, which is now on");
+        PeekConfig.setHighlightEnabledFor(alice, false);
+        checkFalse(helper, PeekConfig.isHighlightEnabledFor(alice),
+                "alice opted out, so the server default must not override her");
+
+        PeekConfig.clearHighlightFor(alice);
+        check(helper, PeekConfig.isHighlightEnabledFor(alice),
+                "after resetting, alice follows the server default again");
+
+        PeekConfig.clearHighlightFor(alice);
+        PeekConfig.clearHighlightFor(bob);
+        PeekConfig.setHighlightEnabled(false);
+        helper.succeed();
+    }
+
     // ------------------------------------------------------------------ interception
 
     /**

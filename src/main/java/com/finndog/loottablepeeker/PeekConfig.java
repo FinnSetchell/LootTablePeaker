@@ -7,6 +7,10 @@ import com.finndog.loottablepeeker.platform.Services;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.UUID;
 
 public final class PeekConfig {
 
@@ -15,8 +19,18 @@ public final class PeekConfig {
         Services.PLATFORM.configDir().resolve(LootTablePeeker.MOD_ID + ".json");
 
     private static PeekMode mode = PeekMode.OFF;
-    /** Independent of {@link #mode}: the cue is useful whether or not interactions are intercepted. */
+    /**
+     * Server-wide default for the container cue, used for any player who has not chosen for
+     * themselves. Independent of {@link #mode}: the cue is useful whether or not interactions are
+     * intercepted.
+     */
     private static boolean highlight = false;
+    /**
+     * Per-player overrides of {@link #highlight}, by player UUID. The cue is a personal display
+     * preference — it changes nothing about the world — so any player may set their own without
+     * needing permissions, and one player turning it on must not put particles on everyone's screen.
+     */
+    private static final Map<UUID, Boolean> highlightOverrides = new HashMap<>();
 
     private PeekConfig() {}
 
@@ -29,6 +43,7 @@ public final class PeekConfig {
         save();
     }
 
+    /** The server-wide default, used for players who have not set their own preference. */
     public static boolean isHighlightEnabled() {
         return highlight;
     }
@@ -36,6 +51,27 @@ public final class PeekConfig {
     public static void setHighlightEnabled(boolean value) {
         highlight = value;
         save();
+    }
+
+    /** Whether this specific player should see the cue: their own choice, else the default. */
+    public static boolean isHighlightEnabledFor(UUID player) {
+        Boolean own = highlightOverrides.get(player);
+        return own != null ? own : highlight;
+    }
+
+    public static void setHighlightEnabledFor(UUID player, boolean value) {
+        highlightOverrides.put(player, value);
+        save();
+    }
+
+    /** Drops a player's override so they follow the server default again. */
+    public static void clearHighlightFor(UUID player) {
+        if (highlightOverrides.remove(player) != null) save();
+    }
+
+    /** True when this player has chosen for themselves rather than following the default. */
+    public static boolean hasHighlightOverride(UUID player) {
+        return highlightOverrides.containsKey(player);
     }
 
     public static void load() {
@@ -63,6 +99,19 @@ public final class PeekConfig {
             if (data.highlight() != null) {
                 highlight = data.highlight();
             }
+
+            highlightOverrides.clear();
+            if (data.highlightPlayers() != null) {
+                data.highlightPlayers().forEach((id, value) -> {
+                    if (value == null) return;
+                    try {
+                        highlightOverrides.put(UUID.fromString(id), value);
+                    } catch (IllegalArgumentException e) {
+                        // A hand-edited config should not take the mod down over one bad key.
+                        LootTablePeeker.LOGGER.warn("Ignoring malformed player UUID in config: {}", id);
+                    }
+                });
+            }
         } catch (IOException e) {
             LootTablePeeker.LOGGER.error("Failed to load config", e);
         }
@@ -74,12 +123,15 @@ public final class PeekConfig {
             // on the very first command.
             Path parent = CONFIG_PATH.getParent();
             if (parent != null) Files.createDirectories(parent);
-            Files.writeString(CONFIG_PATH, GSON.toJson(new Data(mode.id(), null, highlight)));
+            Map<String, Boolean> overrides = new LinkedHashMap<>();
+            highlightOverrides.forEach((id, value) -> overrides.put(id.toString(), value));
+            Files.writeString(CONFIG_PATH, GSON.toJson(new Data(mode.id(), null, highlight, overrides)));
         } catch (IOException e) {
             LootTablePeeker.LOGGER.error("Failed to save config", e);
         }
     }
 
     /** {@code enabled} is only read, never written — it exists solely to migrate old config files. */
-    private record Data(String mode, Boolean enabled, Boolean highlight) {}
+    private record Data(String mode, Boolean enabled, Boolean highlight,
+                        Map<String, Boolean> highlightPlayers) {}
 }
