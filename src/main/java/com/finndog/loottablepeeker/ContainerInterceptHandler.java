@@ -11,6 +11,11 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
+//? if >=1.21 {
+import net.minecraft.ChatFormatting;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.entity.DecoratedPotBlockEntity;
+//?}
 
 /**
  * Loader-neutral interception logic. Each loader calls {@link #tryPeek} from its own
@@ -34,19 +39,34 @@ public final class ContainerInterceptHandler {
         if (!(player instanceof ServerPlayer serverPlayer)) return false;
 
         BlockEntity be = level.getBlockEntity(pos);
-        if (!(be instanceof RandomizableContainerBlockEntity container)) return false;
 
-        // A null id means the loot has already been generated, so the container is an ordinary
-        // chest now and should open normally.
-        String tableId = LootTableAccess.idOf(container);
-        if (tableId == null) return false;
-
-        if (mode == PeekMode.PREVIEW) {
-            LootPreviewMenu.open(serverPlayer, serverLevel, pos, container, tableId);
-        } else {
-            sendPeekTitle(serverPlayer, tableId);
+        if (be instanceof RandomizableContainerBlockEntity container) {
+            // A null id means the loot has already been generated, so the container is an ordinary
+            // chest now and should open normally.
+            String tableId = LootTableAccess.idOf(container);
+            if (tableId == null) return false;
+            if (mode == PeekMode.PREVIEW) {
+                LootPreviewMenu.open(serverPlayer, serverLevel, pos, container, tableId);
+            } else {
+                sendPeekTitle(serverPlayer, tableId);
+            }
+            return true;
         }
-        return true;
+
+        //? if >=1.21 {
+        // Decorated pots have no unresolved-loot-table state to key on, so only intercept when
+        // the player is sneaking — plain right-click still opens the pot normally.
+        if (be instanceof DecoratedPotBlockEntity pot && player.isShiftKeyDown()) {
+            if (mode == PeekMode.PREVIEW) {
+                PotPeekMenu.open(serverPlayer, pot);
+            } else {
+                sendPotTitle(serverPlayer, pot);
+            }
+            return true;
+        }
+        //?}
+
+        return false;
     }
 
     private static void sendPeekTitle(ServerPlayer player, String tableId) {
@@ -58,4 +78,17 @@ public final class ContainerInterceptHandler {
         player.connection.send(new ClientboundSetTitleTextPacket(title));
         player.connection.send(new ClientboundSetSubtitleTextPacket(subtitle));
     }
+
+    //? if >=1.21 {
+    private static void sendPotTitle(ServerPlayer player, DecoratedPotBlockEntity pot) {
+        ItemStack item = pot.getItem(0);
+        Component title = Component.literal("§6⚠ Decorated Pot");
+        Component subtitle = item.isEmpty()
+            ? Component.literal("§7Empty")
+            : item.getHoverName().copy().withStyle(ChatFormatting.AQUA);
+        player.connection.send(new ClientboundSetTitlesAnimationPacket(10, 70, 20));
+        player.connection.send(new ClientboundSetTitleTextPacket(title));
+        player.connection.send(new ClientboundSetSubtitleTextPacket(subtitle));
+    }
+    //?}
 }
