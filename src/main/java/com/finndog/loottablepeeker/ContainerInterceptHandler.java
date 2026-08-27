@@ -46,7 +46,8 @@ public final class ContainerInterceptHandler {
             String tableId = LootTableAccess.idOf(container);
             if (tableId == null) return false;
             if (mode == PeekMode.PREVIEW) {
-                LootPreviewMenu.open(serverPlayer, serverLevel, pos, container, tableId);
+                LootPreviewMenu.open(serverPlayer, serverLevel, pos, container,
+                    container.getContainerSize(), tableId);
             } else {
                 sendPeekTitle(serverPlayer, tableId);
             }
@@ -57,10 +58,21 @@ public final class ContainerInterceptHandler {
         // Decorated pots have no unresolved-loot-table state to key on, so only intercept when
         // the player is sneaking — plain right-click still opens the pot normally.
         if (be instanceof DecoratedPotBlockEntity pot && player.isShiftKeyDown()) {
-            if (mode == PeekMode.PREVIEW) {
-                PotPeekMenu.open(serverPlayer, pot);
+            String tableId = LootTableAccess.idOf(pot);
+            if (tableId != null) {
+                // Pot has an unresolved loot table — show the same loot preview as a chest.
+                if (mode == PeekMode.PREVIEW) {
+                    LootPreviewMenu.open(serverPlayer, serverLevel, pos, pot, 1, tableId);
+                } else {
+                    sendPeekTitle(serverPlayer, tableId);
+                }
             } else {
-                sendPotTitle(serverPlayer, pot);
+                // Loot already resolved (or was never present) — show the stored item.
+                if (mode == PeekMode.PREVIEW) {
+                    PotPeekMenu.open(serverPlayer, pot);
+                } else {
+                    sendPotTitle(serverPlayer, pot);
+                }
             }
             return true;
         }

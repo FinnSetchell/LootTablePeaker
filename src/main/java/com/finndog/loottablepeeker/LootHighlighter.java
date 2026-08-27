@@ -8,6 +8,9 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
 import net.minecraft.world.level.chunk.LevelChunk;
+//? if >=1.21 {
+import net.minecraft.world.level.block.entity.DecoratedPotBlockEntity;
+//?}
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -97,9 +100,16 @@ public final class LootHighlighter {
                 if (chunk == null) continue;
 
                 for (Map.Entry<BlockPos, BlockEntity> entry : chunk.getBlockEntities().entrySet()) {
-                    if (!(entry.getValue() instanceof RandomizableContainerBlockEntity container)) continue;
-                    if (!LootTableAccess.hasLootTable(container)) continue;
-
+                    BlockEntity be = entry.getValue();
+                    if (be instanceof RandomizableContainerBlockEntity rcbe) {
+                        if (!LootTableAccess.hasLootTable(rcbe)) continue;
+                    //? if >=1.21 {
+                    } else if (be instanceof DecoratedPotBlockEntity pot) {
+                        if (!LootTableAccess.hasLootTable(pot)) continue;
+                    //?}
+                    } else {
+                        continue;
+                    }
                     drawCorners(level, player, boxOf(level, entry.getKey()));
                     if (++spawned >= MAX_PER_CYCLE) return;
                 }
@@ -113,8 +123,16 @@ public final class LootHighlighter {
         if (!(hit instanceof BlockHitResult blockHit)) return;
 
         BlockPos pos = blockHit.getBlockPos();
-        if (!(level.getBlockEntity(pos) instanceof RandomizableContainerBlockEntity container)) return;
-        if (!LootTableAccess.hasLootTable(container)) return;
+        BlockEntity be = level.getBlockEntity(pos);
+        if (be instanceof RandomizableContainerBlockEntity rcbe) {
+            if (!LootTableAccess.hasLootTable(rcbe)) return;
+        //? if >=1.21 {
+        } else if (be instanceof DecoratedPotBlockEntity pot) {
+            if (!LootTableAccess.hasLootTable(pot)) return;
+        //?}
+        } else {
+            return;
+        }
 
         drawWireframe(level, player, boxOf(level, pos));
     }

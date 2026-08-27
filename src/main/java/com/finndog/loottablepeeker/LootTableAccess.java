@@ -6,6 +6,7 @@ import net.minecraft.world.level.storage.loot.LootTable;
 
 //? if >=1.21 {
 import net.minecraft.core.registries.Registries;
+import net.minecraft.world.RandomizableContainer;
 //?}
 
 /**
@@ -23,6 +24,11 @@ import net.minecraft.core.registries.Registries;
  * of the block entity's own serialised form — {@code saveWithoutMetadata()} writes both tags
  * exactly when the loot table is still unresolved — and resolves through
  * {@code MinecraftServer#getLootData()}.</p>
+ *
+ * <p>On 1.21+ the methods accept {@link RandomizableContainer} rather than the concrete
+ * {@link RandomizableContainerBlockEntity}, so decorated pots (which implement the interface
+ * directly without extending the abstract class) share the same loot-table code paths. On 1.20.1
+ * the interface does not exist, so the narrower concrete type is used instead.</p>
  */
 public final class LootTableAccess {
 
@@ -39,20 +45,24 @@ public final class LootTableAccess {
      * The container's unresolved loot table id, or {@code null} if it has none — which is also how
      * a container reads once its loot has already been generated.
      */
-    public static String idOf(RandomizableContainerBlockEntity container) {
+    //? if >=1.21 {
+    public static String idOf(RandomizableContainer container) {
         // 1.21.11 renamed ResourceKey#location to #identifier, alongside ResourceLocation itself.
         //? if >=1.21.11 {
         /*var key = container.getLootTable();
         return key == null ? null : key.identifier().toString();
-        *///?} elif >=1.21 {
+        *///?} else {
         var key = container.getLootTable();
         return key == null ? null : key.location().toString();
-        //?} else {
-        /*net.minecraft.nbt.CompoundTag tag = container.saveWithoutMetadata();
+        //?}
+    }
+    //?} else {
+    /*public static String idOf(RandomizableContainerBlockEntity container) {
+        net.minecraft.nbt.CompoundTag tag = container.saveWithoutMetadata();
         String id = tag.getString(RandomizableContainerBlockEntity.LOOT_TABLE_TAG);
         return id.isEmpty() ? null : id;
-        *///?}
     }
+    *///?}
 
     /**
      * Whether the container still holds an unresolved loot table, without building its id.
@@ -64,24 +74,26 @@ public final class LootTableAccess {
      * through the {@code Container} interface generates its loot. Everything on this path has to go
      * through the loot table fields directly.</p>
      */
-    public static boolean hasLootTable(RandomizableContainerBlockEntity container) {
-        //? if >=1.21 {
+    //? if >=1.21 {
+    public static boolean hasLootTable(RandomizableContainer container) {
         return container.getLootTable() != null;
-        //?} else {
-        /*// 1.20.1 has no getter, so this costs a block entity serialisation per call. That is
+    }
+    //?} else {
+    /*public static boolean hasLootTable(RandomizableContainerBlockEntity container) {
+        // 1.20.1 has no getter, so this costs a block entity serialisation per call. That is
         // cheap for a container that still has its loot table (vanilla writes the two loot tags and
         // skips the item list entirely), and bounded by the scan caps in LootHighlighter otherwise.
         return container.saveWithoutMetadata().contains(RandomizableContainerBlockEntity.LOOT_TABLE_TAG);
-        *///?}
     }
+    *///?}
 
     /**
      * Resolves the container's loot table, or returns {@code null} when nothing is registered under
      * that id. Distinguishing "not registered" from "registered but rolls nothing" is what lets the
      * preview explain an empty result instead of just showing a bare chest.
      */
-    public static LootTable tableOf(MinecraftServer server, RandomizableContainerBlockEntity container) {
-        //? if >=1.21 {
+    //? if >=1.21 {
+    public static LootTable tableOf(MinecraftServer server, RandomizableContainer container) {
         var key = container.getLootTable();
         if (key == null) return null;
         // Membership is asked of the registry directly rather than by comparing the result against
@@ -90,24 +102,28 @@ public final class LootTableAccess {
         var registry = server.reloadableRegistries().lookup().lookup(Registries.LOOT_TABLE);
         if (registry.isEmpty() || registry.get().get(key).isEmpty()) return null;
         return server.reloadableRegistries().getLootTable(key);
-        //?} else {
-        /*String id = idOf(container);
+    }
+    //?} else {
+    /*public static LootTable tableOf(MinecraftServer server, RandomizableContainerBlockEntity container) {
+        String id = idOf(container);
         if (id == null) return null;
         // getElementOptional is the 1.20.1 equivalent of the registry membership check above:
         // absent means unregistered, which getLootTable would have flattened into LootTable.EMPTY.
         return server.getLootData().getElementOptional(
                 net.minecraft.world.level.storage.loot.LootDataType.TABLE,
                 new net.minecraft.resources.ResourceLocation(id)).orElse(null);
-        *///?}
     }
+    *///?}
 
     /** The container's stored loot table seed; {@link #RANDOMIZE_SEED} means "roll fresh". */
-    public static long seedOf(RandomizableContainerBlockEntity container) {
-        //? if >=1.21 {
+    //? if >=1.21 {
+    public static long seedOf(RandomizableContainer container) {
         return container.getLootTableSeed();
-        //?} else {
-        /*// Absent tag reads as 0, which is RANDOMIZE_SEED — the same thing it means on 1.21+.
-        return container.saveWithoutMetadata().getLong(RandomizableContainerBlockEntity.LOOT_TABLE_SEED_TAG);
-        *///?}
     }
+    //?} else {
+    /*public static long seedOf(RandomizableContainerBlockEntity container) {
+        // Absent tag reads as 0, which is RANDOMIZE_SEED — the same thing it means on 1.21+.
+        return container.saveWithoutMetadata().getLong(RandomizableContainerBlockEntity.LOOT_TABLE_SEED_TAG);
+    }
+    *///?}
 }

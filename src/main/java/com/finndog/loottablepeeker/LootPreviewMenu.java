@@ -5,6 +5,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+//? if >=1.21 {
+import net.minecraft.world.RandomizableContainer;
+//?}
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Inventory;
@@ -20,7 +23,6 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
@@ -50,7 +52,11 @@ public class LootPreviewMenu extends ChestMenu {
 
     private final ServerLevel level;
     private final BlockPos pos;
-    private final RandomizableContainerBlockEntity container;
+    //? if >=1.21 {
+    private final RandomizableContainer container;
+    //?} else {
+    /*private final net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity container;
+    *///?}
     private final String tableId;
     private final Player viewer;
     private final SimpleContainer display;
@@ -74,9 +80,14 @@ public class LootPreviewMenu extends ChestMenu {
         FAILED
     }
 
+    //? if >=1.21 {
     public static void open(ServerPlayer player, ServerLevel level, BlockPos pos,
-                            RandomizableContainerBlockEntity container, String tableId) {
-        int lootSlots = Math.max(1, container.getContainerSize());
+                            RandomizableContainer container, int lootSlots, String tableId) {
+    //?} else {
+    /*public static void open(ServerPlayer player, ServerLevel level, BlockPos pos,
+                            net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity container,
+                            int lootSlots, String tableId) {
+    *///?}
         long seed = LootTableAccess.seedOf(container);
         Layout layout = Layout.forSize(lootSlots);
 
@@ -89,10 +100,17 @@ public class LootPreviewMenu extends ChestMenu {
         ));
     }
 
+    //? if >=1.21 {
     private LootPreviewMenu(int containerId, Inventory inventory, Player viewer, Layout layout,
                             SimpleContainer display, ServerLevel level, BlockPos pos,
-                            RandomizableContainerBlockEntity container, String tableId,
+                            RandomizableContainer container, String tableId,
                             int lootSlots, long seed) {
+    //?} else {
+    /*private LootPreviewMenu(int containerId, Inventory inventory, Player viewer, Layout layout,
+                            SimpleContainer display, ServerLevel level, BlockPos pos,
+                            net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity container,
+                            String tableId, int lootSlots, long seed) {
+    *///?}
         super(layout.type(), containerId, inventory, display, layout.rows());
         this.level = level;
         this.pos = pos;
