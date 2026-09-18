@@ -16,7 +16,7 @@ import net.minecraft.network.chat.Component;
  * whole screen render pipeline ({@code GuiGraphics} became {@code GuiGraphicsExtractor} and
  * {@code render} became {@code extractRenderState...}), but widgets draw themselves and
  * {@code init}/{@code addRenderableWidget}/{@code Button.builder} are unchanged from 1.20 through
- * 26.2. Keeping every label inside a button rather than drawing text is what lets this one class
+ * 26.3. Keeping every label inside a button rather than drawing text is what lets this one class
  * serve every version with a single conditional.</p>
  *
  * <p>The settings are <b>server-side</b>: they live in the server's config and are applied there.

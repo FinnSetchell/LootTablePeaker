@@ -38,6 +38,7 @@ stonecutter {
         match("1.21.11", "fabric", "neoforge")
         match("26.1.2", "fabric", "neoforge")
         match("26.2", "fabric", "neoforge")
+        match("26.3", "fabric", "neoforge")
 
         // 1.20.1 is Fabric-only. NeoForge had not split from Forge at 1.20.1, so there is no
         // `net.neoforged:neoforge` artifact for it — it ships as `net.neoforged:forge` and needs

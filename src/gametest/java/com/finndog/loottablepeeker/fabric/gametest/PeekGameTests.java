@@ -78,7 +78,7 @@ public class PeekGameTests {
      * method directly, bypassing {@link net.minecraft.server.level.ServerPlayerGameMode} — and with
      * it both Fabric's {@code UseBlockCallback} and NeoForge's {@code RightClickBlock}, the very
      * hooks these tests exist to cover. Going through {@code gameMode.useItemOn} fires them, and
-     * that signature is unchanged from 1.20.1 through 26.2.</p>
+     * that signature is unchanged from 1.20.1 through 26.3.</p>
      */
     private static void rightClick(GameTestHelper helper, ServerPlayer player, BlockPos relative) {
         BlockPos absolute = helper.absolutePos(relative);

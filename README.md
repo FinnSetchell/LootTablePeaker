@@ -16,6 +16,7 @@ Built with [Stonecutter](https://stonecutter.kikugie.dev/) from one shared sourc
 | 1.21.11 | ✅ | ✅ |
 | 26.1 – 26.1.2 | ✅ | ✅ |
 | 26.2 | ✅ | ✅ |
+| 26.3 | ✅ | ✅ |
 
 Each jar declares an exact bounded range, so installing one on a version it was not built for is refused at load rather than crashing partway in. A version range means one jar covers those releases: the mod is compiled against the highest of them, and every API it touches was checked to be identical on the others.
 
