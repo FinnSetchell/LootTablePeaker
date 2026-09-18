@@ -9,7 +9,7 @@ mod.name = "Loot Table Peeker"
 # Artifact stem for the fleet filename convention {ModName}-{loader}-{mc}-{version}.jar.
 mod.archive_name = "LootTablePeeker"
 mod.group = "com.finndog.loottablepeeker"
-mod.version = "2.3.0"
+mod.version = "2.3.1"
 mod.author = "FinnSetchell"
 mod.license = "MIT"
 mod.description = "A server-side developer tool that stops loot containers from opening, showing their loot table id or a rerollable preview of the loot instead."
