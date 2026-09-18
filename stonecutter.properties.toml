@@ -106,9 +106,8 @@ deps.fabric_api = "0.155.2+26.2"
 deps.modmenu = "20.0.1"
 
 [neoforge."26.2"]
-# NeoForge has no stable 26.2 release yet — every published 26.2.x is a beta.
 mod.mc_compat = "[26.2, 26.3)"
-deps.neo_loader = "26.2.0.35-beta"
+deps.neo_loader = "26.2.0.88"
 
 # ------------------------------------------------------------------ 26.3 (Java 25, unobfuscated)
 ["26.3"]
